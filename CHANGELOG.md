@@ -6,6 +6,8 @@ All notable changes to this project are listed here. Versions follow
 
 ## [Unreleased]
 
+- `scripts/check-skill.py` checks skill frontmatter, links, eval cases, and
+  plugin manifests. CI runs it on push and pull request.
 - README: install instructions for agents other than Claude Code, since the skill
   is a standard Agent Skill.
 - README: a before/after example of what the skill changes.

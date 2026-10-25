@@ -238,9 +238,12 @@ claude plugin update beautiful-rust
 Anyone who copied the folder or used an installer re-runs the install command. Record
 each release in [CHANGELOG.md](CHANGELOG.md).
 
-Validate before pushing:
+Validate before pushing. `python3 scripts/check-skill.py` checks skill
+frontmatter, links, eval cases, and plugin manifests. Pass `--json` for
+machine-readable output.
 
 ```bash
+python3 scripts/check-skill.py
 claude plugin validate .
 ```
 
