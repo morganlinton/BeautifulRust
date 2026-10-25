@@ -6,6 +6,8 @@ All notable changes to this project are listed here. Versions follow
 
 ## [Unreleased]
 
+- Copy-paste `[lints]` table for the skill's compiler and clippy rules, a check
+  crate that proves each lint fires, and `scripts/check-lints.sh`.
 - README: install instructions for agents other than Claude Code, since the skill
   is a standard Agent Skill.
 - README: a before/after example of what the skill changes.

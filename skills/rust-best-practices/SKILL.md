@@ -53,10 +53,13 @@ cargo doc --no-deps   # libraries: catches broken doc links and missing docs
   break the build. Enforce warnings-as-errors in CI instead (`cargo clippy -- -D warnings`
   or `RUSTFLAGS="-D warnings"`).
 - Configure lints once in `Cargo.toml` (`[lints.rust]`, `[lints.clippy]`, or
-  `[workspace.lints]`), not with scattered crate attributes. A good baseline:
-  `unsafe_op_in_unsafe_fn`, `missing_debug_implementations`, `clippy::all`, and where
-  the project tolerates them `clippy::undocumented_unsafe_blocks` and
-  `clippy::allow_attributes_without_reason`.
+  `[workspace.lints]`), not with scattered crate attributes. Copy `assets/lints.toml`
+  into `Cargo.toml` as `[lints]`, or rename `[lints.` to `[workspace.lints.` and set
+  `lints.workspace = true` on each crate. That table turns the enforceable rules in
+  this skill into compiler and clippy `warn` settings. Do not add `#![deny(warnings)]`;
+  the table uses `warn` so a new toolchain cannot break the build. From the
+  BeautifulRust repository root, `bash scripts/check-lints.sh` checks that every
+  mapped lint still fires.
 
 ## 3. Ownership and borrowing
 
@@ -483,6 +486,8 @@ instead of per-item locking; applications may set a `#[global_allocator]` such a
 Before returning Rust code, confirm:
 
 - `cargo fmt`, `cargo clippy -- -D warnings`, and `cargo test` are clean.
+- `Cargo.toml` has the `[lints]` table from `assets/lints.toml` (or
+  `lints.workspace = true`).
 - No `unwrap()` outside tests and `main`; every `expect`, `assert`, and `panic` has a
   message with the relevant values.
 - Public functions take `&str`, `&[T]`, `impl AsRef<_>`, or `impl IntoIterator`, not

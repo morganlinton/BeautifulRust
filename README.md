@@ -192,6 +192,25 @@ it while coding:
 
 `skills/rust-best-practices/references/` holds one digest per source for deeper lookups.
 
+## Enforce it with lints
+
+The skill's rules hold only while the compiler enforces them. Copy
+`skills/rust-best-practices/assets/lints.toml` into your `Cargo.toml` as `[lints]`,
+or into a workspace as `[workspace.lints]` with `lints.workspace = true` on each
+crate.
+
+The table sets `clippy::pedantic` to `warn` (priority -1) and then allows the few
+pedantic lints this skill disagrees with. It never uses `deny(warnings)`.
+
+Prove the mapping from the repository root:
+
+```bash
+bash scripts/check-lints.sh
+```
+
+The script fails if a listed lint stops firing, if clippy reports anything else,
+or if the check crate's `Cargo.toml` drifts from `assets/lints.toml`.
+
 ## Layout
 
 ```
@@ -199,9 +218,14 @@ BeautifulRust/
 ├── .claude-plugin/
 │   ├── plugin.json         plugin manifest
 │   └── marketplace.json    lets this repo act as its own marketplace
+├── scripts/
+│   └── check-lints.sh      proves the [lints] table still fires
 ├── skills/
 │   └── rust-best-practices/
 │       ├── SKILL.md
+│       ├── assets/
+│       │   ├── lints.toml      copy-paste [lints.rust] / [lints.clippy]
+│       │   └── lints-check/    tiny crate with one violation per lint
 │       └── references/
 │           ├── google-rust-style-guide.md
 │           ├── rust-api-guidelines.md
