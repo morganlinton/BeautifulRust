@@ -1,0 +1,39 @@
+name: Propose a rule
+description: Suggest a rule the skills should add, change, or drop
+labels: ["rule"]
+body:
+  - type: dropdown
+    id: skill
+    attributes:
+      label: Which skill?
+      options:
+        - rust-best-practices (writing code)
+        - rust-review (reviewing code)
+        - rust-port (porting to Rust)
+        - lints config
+    validations:
+      required: true
+  - type: textarea
+    id: rule
+    attributes:
+      label: The rule
+      description: One or two sentences, phrased as guidance an agent could follow.
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source
+      description: A link to the published guidance this comes from (API Guidelines, Effective Rust, clippy docs, the Rust Reference, an RFC, and so on).
+    validations:
+      required: true
+  - type: textarea
+    id: before
+    attributes:
+      label: What the agent writes today
+      render: rust
+  - type: textarea
+    id: after
+    attributes:
+      label: What it should write instead
+      render: rust

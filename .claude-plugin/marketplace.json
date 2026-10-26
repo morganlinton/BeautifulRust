@@ -9,7 +9,7 @@
     {
       "name": "beautiful-rust",
       "source": "./",
-      "description": "A skill that teaches Claude to write idiomatic, robust Rust, distilled from five authoritative style and design guides."
+      "description": "Skills that teach Claude to write, review, and port idiomatic Rust, distilled from five authoritative guides, plus a drop-in clippy config."
     }
   ]
 }

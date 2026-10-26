@@ -1,0 +1,30 @@
+name: Review false positive
+description: rust-review flagged something that is actually fine
+labels: ["rust-review", "false-positive"]
+body:
+  - type: textarea
+    id: code
+    attributes:
+      label: The code that was reviewed
+      description: The smallest snippet that reproduces it.
+      render: rust
+    validations:
+      required: true
+  - type: textarea
+    id: finding
+    attributes:
+      label: The finding
+      description: Paste the finding from the review, including the rule it cited.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it's fine here
+    validations:
+      required: true
+  - type: input
+    id: agent
+    attributes:
+      label: Agent and model
+      placeholder: e.g. Claude Code with Claude Opus 5.5, Codex, Copilot

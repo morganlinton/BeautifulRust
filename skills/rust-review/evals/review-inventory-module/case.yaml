@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: review-inventory-module
+context:
+  scaffold_script: place-files.sh
+expected_outcome: |
+  REVIEW.md is a prioritized review of inventory.rs that does not modify the code. It
+  finds the real problems (panics on fallible paths, Rc<RefCell> in the public API,
+  &String and &Vec parameters, an error type without Display or Error, a bool
+  parameter, nondeterministic HashMap output, and #![deny(warnings)]), ranks the
+  panics above style issues, cites a file:line location and a named rule for each
+  finding, shows each fix as a short code change, groups repeated issues, and says
+  what the code already does well.
