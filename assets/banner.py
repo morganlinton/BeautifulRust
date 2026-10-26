@@ -6,7 +6,9 @@ foreground rocks and the title set in a hand-built pixel font. Everything is
 generated from the standard library: value noise, simple lighting, ordered
 dithering onto a median-cut palette, then the text drawn on top.
 
-Run `python3 assets/banner.py` to regenerate assets/banner.png.
+The README banner (assets/banner.png) is a hand-made painting and is not generated.
+Run `python3 assets/banner.py` to regenerate the plugin icon
+(.claude-plugin/icon.png) and the earlier procedural banner (assets/banner-procedural.png).
 """
 import math
 import random
@@ -544,7 +546,7 @@ def main():
     draw_text(big, "Idiomatic Rust, distilled", int(fh * 0.53), 6,
               fill=(184, 220, 250), outline=(24, 20, 36), shadow=(16, 12, 28),
               outline_px=3, shadow_off=4)
-    out = Path(__file__).with_name("banner.png")
+    out = Path(__file__).with_name("banner-procedural.png")
     fw, fh = write_png(out, big)
     print(f"wrote {out} ({fw}x{fh})")
     icon = Path(__file__).resolve().parent.parent / ".claude-plugin" / "icon.png"

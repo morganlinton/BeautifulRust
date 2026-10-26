@@ -1,7 +1,7 @@
 {
   "name": "beautiful-rust",
-  "version": "1.1.0",
-  "description": "Teaches Claude to write idiomatic, robust Rust: ownership, API design, errors and panics, async, unsafe, crates, docs, and tests. Synthesized from the Google Rust Style Guide, the Rust API Guidelines, Effective Rust, Rust Design Patterns, and Microsoft's Pragmatic Rust Guidelines.",
+  "version": "1.3.0",
+  "description": "Write, review, port, and enforce idiomatic Rust: three skills distilled from the Google Rust Style Guide, the Rust API Guidelines, Effective Rust, Rust Design Patterns, and Microsoft's Pragmatic Rust Guidelines, plus a drop-in clippy config.",
   "license": "MIT",
   "author": {
     "name": "Morgan Linton",
@@ -10,10 +10,14 @@
   "homepage": "https://github.com/morganlinton/BeautifulRust",
   "repository": "https://github.com/morganlinton/BeautifulRust",
   "keywords": [
+    "api-design",
+    "best-practices",
+    "clippy",
+    "code-review",
+    "migration",
+    "porting",
     "rust",
     "skill",
-    "best-practices",
-    "style-guide",
-    "api-design"
+    "style-guide"
   ]
 }

@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: port-python-task-graph
+context:
+  scaffold_script: place-files.sh
+expected_outcome: |
+  A Rust library crate that builds, passes clippy cleanly, and passes ported versions of
+  every test in test_taskgraph.py, including each subTest case. The exception hierarchy
+  becomes an error enum whose variants carry the same data; the task kind becomes an enum;
+  priority becomes an Option; definition order is preserved rather than lost to HashMap
+  iteration. execution_order and the cycle report match the Python results exactly, and
+  PORTING.md maps the API and tests and lists deliberate differences.

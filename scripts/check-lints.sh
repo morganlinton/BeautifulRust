@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Prove the skill's [lints] table fires: every // expect: lint in the check
 # crate must report on its marked line, nothing else may report, and the
-# table in assets/lints.toml must match the check crate's Cargo.toml.
+# table in lints/lints.toml must match the check crate's Cargo.toml. Clippy reads
+# lints/clippy.toml, the same file users copy next to their Cargo.toml.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TABLE="$ROOT/skills/rust-best-practices/assets/lints.toml"
-CRATE="$ROOT/skills/rust-best-practices/assets/lints-check"
+TABLE="$ROOT/lints/lints.toml"
+CRATE="$ROOT/lints/check"
 SRC="$CRATE/src/lib.rs"
 MANIFEST="$CRATE/Cargo.toml"
 
@@ -28,6 +29,7 @@ JSON="$(mktemp "${TMPDIR:-/tmp}/lints-check-json.XXXXXX")"
 trap 'rm -rf "$TARGET" "$JSON"' EXIT
 
 export CARGO_TERM_COLOR=never
+export CLIPPY_CONF_DIR="$ROOT/lints"
 set +e
 cargo clippy --manifest-path "$MANIFEST" --target-dir "$TARGET" --message-format=json \
   >"$JSON" 2>"$TARGET/clippy.err"
@@ -51,22 +53,31 @@ err = Path(err_path).read_text() if Path(err_path).exists() else ""
 failed = False
 
 if table not in manifest:
-    print("lints table drifted: assets/lints.toml is not byte-identical in the check crate Cargo.toml")
+    print("lints table drifted: lints/lints.toml is not byte-identical in the check crate Cargo.toml")
     failed = True
 
 rule_for = {}
 last_rule = ""
+in_table = False
 for line in table.splitlines():
     stripped = line.strip()
-    if stripped.startswith("# §"):
-        last_rule = stripped[2:].strip()
+    if stripped.startswith("[lints"):
+        in_table, last_rule = True, ""
         continue
-    m = re.match(r"^([A-Za-z0-9_]+)\s*=", stripped)
-    if m and last_rule:
-        name = m.group(1)
-        rule_for[name] = last_rule
-        rule_for[name.replace("_", "-")] = last_rule
-        rule_for[f"clippy::{name}"] = last_rule
+    if not in_table:
+        continue
+    if stripped.startswith("#"):
+        # A comment line heads the group of lints below it, e.g. "# Panics: ..."
+        last_rule = stripped.lstrip("#").strip().rstrip(".")
+        continue
+    if not stripped:
+        continue
+    m = re.match(r"^([A-Za-z0-9_]+)\s*=[^#]*(?:#\s*(.*))?$", stripped)
+    if m:
+        name, inline = m.group(1), (m.group(2) or "").strip()
+        rule = inline or last_rule
+        for key in (name, name.replace("_", "-"), f"clippy::{name}"):
+            rule_for[key] = rule
 
 
 def hyphen_to_underscore(name: str) -> str:

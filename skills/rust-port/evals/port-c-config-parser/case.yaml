@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: port-c-config-parser
+context:
+  scaffold_script: place-files.sh
+expected_outcome: |
+  A Rust library crate that builds, passes clippy cleanly, and passes ported versions of
+  every test in test_config.c. It has no unsafe code or raw pointers. Error codes and
+  out-parameters become a Result with an error enum that carries the line number; NULL
+  returns become Option; the flags bitmask becomes a typed options value. Behavior matches
+  the C version, including duplicate handling, case-insensitive keys, value trimming, and
+  rejection of out-of-range integers. PORTING.md maps the API and tests and lists
+  deliberate differences.
