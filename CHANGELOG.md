@@ -6,6 +6,12 @@ All notable changes to this project are listed here. Versions follow
 
 ## [Unreleased]
 
+- `scripts/check-examples.py` compiles every Rust code block in the skills, the
+  reference digests, the README, and `examples/` with `cargo check`, and reports
+  errors at the markdown line. `scripts/examples.json` holds the surrounding code that
+  fragments need to compile, or the reason a block is skipped. CI runs it on push and
+  pull request.
+
 ## [1.4.0] - 2026-10-26
 
 The first release with outside contributions. Thanks to @mvanhorn for both.

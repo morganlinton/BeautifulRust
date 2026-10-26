@@ -24,3 +24,11 @@ jobs:
           components: clippy
       - name: Prove every lint in lints/lints.toml fires
         run: bash scripts/check-lints.sh
+
+  examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Compile every Rust example in the skills and docs
+        run: python3 scripts/check-examples.py

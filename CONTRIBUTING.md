@@ -30,7 +30,12 @@ disagree, say which one you followed and why.
    lines; longer material belongs in `references/`. Explain why a rule matters, not just
    what it is. Agents follow reasoning better than commands.
 2. **Compile your examples.** Every Rust code block in the skills and the README must
-   compile on stable Rust. Fill in placeholders like `/* ... */` before checking.
+   compile on stable Rust. Run `python3 scripts/check-examples.py`; CI runs it too.
+   Most examples are fragments, so `scripts/examples.json` gives each one the code
+   around it that it needs, such as a type it uses or the function its statements
+   belong in. If you add, move, or change the first line of a block, update its entry
+   there. A block that can't compile on its own, like signatures without bodies, gets
+   a `skip` with the reason.
 3. **Check lint changes.** If you touch `lints/`, run clippy on a crate that uses the
    config and confirm the lint name is accepted and actually fires.
 4. **Run the evals if you changed behavior.** From the skill's directory:

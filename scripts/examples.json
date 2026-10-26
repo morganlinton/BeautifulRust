@@ -1,0 +1,277 @@
+{
+  "_comment": [
+    "Context that lets each Rust block in the docs compile on its own. Read by",
+    "scripts/check-examples.py. A file's prelude goes in front of every block in that",
+    "file. A block's template wraps it: {code} is replaced by the block. Blocks are",
+    "numbered from 1 in the order they appear, and first_line must match the block's",
+    "first non-blank line, so adding, moving, or editing a block fails the check until",
+    "this file is updated. Use skip, with a reason, only for a block that cannot compile",
+    "on its own. Blocks with no entry are compiled as they are."
+  ],
+  "files": {
+    "README.md": {
+      "prelude": [
+        "pub struct Identifier;",
+        "#[derive(Debug)]",
+        "pub struct ParseError;",
+        "#[derive(Debug)]",
+        "pub struct ParseVersionError;"
+      ],
+      "blocks": {}
+    },
+    "examples/review-inventory.md": {
+      "blocks": {
+        "1": {
+          "first_line": "let text = std::fs::read_to_string(path).map_err(InventoryError::Io)?;            // line 83",
+          "template": [
+            "#[derive(Debug)]",
+            "pub enum InventoryError {",
+            "    NotFound(String),",
+            "    Parse { field: &'static str, source: std::num::ParseIntError },",
+            "    Io(std::io::Error),",
+            "    Overflow,",
+            "}",
+            "fn parse_example(path: &std::path::Path, parts: &[&str]) -> Result<(), InventoryError> {",
+            "{code}",
+            "    Ok(())",
+            "}"
+          ]
+        },
+        "2": {
+          "first_line": "pub fn total_value(&self, names: &[String]) -> Result<i64, InventoryError> {",
+          "skip": "a method followed by a one-line fix from a different method"
+        },
+        "3": {
+          "first_line": "pub struct Item {",
+          "skip": "a struct followed by a statement from a different function"
+        },
+        "4": {
+          "first_line": "#[derive(Debug, thiserror::Error)]",
+          "skip": "needs the thiserror crate; the generated crate has no dependencies"
+        },
+        "5": {
+          "first_line": "#[derive(Debug, Default)]",
+          "template": [
+            "use std::collections::HashMap;",
+            "#[derive(Debug)]",
+            "pub struct Item;",
+            "#[derive(Debug)]",
+            "pub enum InventoryError {}",
+            "{code}"
+          ]
+        },
+        "6": {
+          "first_line": "pub fn get(&self, name: &str) -> Option<&Item> {",
+          "template": [
+            "#[derive(Debug)]",
+            "pub enum InventoryError {",
+            "    NotFound(String),",
+            "    Parse { field: &'static str, source: std::num::ParseIntError },",
+            "    Io(std::io::Error),",
+            "    Overflow,",
+            "}",
+            "use std::collections::HashMap;",
+            "pub struct Item {",
+            "    qty: u32,",
+            "}",
+            "pub struct Inventory {",
+            "    items: HashMap<String, Item>,",
+            "}",
+            "impl Inventory {",
+            "{code}",
+            "}"
+          ]
+        },
+        "7": {
+          "first_line": "pub fn get(&self, name: &str) -> Option<&Item>",
+          "skip": "signatures only, no bodies"
+        },
+        "8": {
+          "first_line": "let items = self.items.borrow();",
+          "template": [
+            "use std::cell::RefCell;",
+            "use std::collections::HashMap;",
+            "struct Inventory {",
+            "    items: RefCell<HashMap<String, u32>>,",
+            "}",
+            "impl Inventory {",
+            "fn report(&self) {",
+            "{code}",
+            "}",
+            "}"
+          ]
+        },
+        "9": {
+          "first_line": "#[cfg(test)]",
+          "template": [
+            "pub struct Item {",
+            "    pub name: String,",
+            "    pub qty: u32,",
+            "}",
+            "pub struct Inventory;",
+            "impl Inventory {",
+            "    pub fn parse_line(_line: &str) -> Result<Item, String> {",
+            "        todo!()",
+            "    }",
+            "}",
+            "{code}"
+          ]
+        },
+        "10": {
+          "first_line": "pub enum ReportDetail { Summary, Verbose }",
+          "skip": "the method is shown as a signature only"
+        },
+        "12": {
+          "first_line": "use std::fmt::Write as _;",
+          "template": [
+            "struct Item {",
+            "    qty: u32,",
+            "    price_cents: u64,",
+            "    is_perishable: bool,",
+            "}",
+            "fn report_line(s: &mut String, k: &str, v: &Item, verbose: bool) {",
+            "{code}",
+            "}"
+          ]
+        }
+      }
+    },
+    "skills/rust-best-practices/SKILL.md": {
+      "blocks": {
+        "1": {
+          "first_line": "// Move out of a &mut enum without cloning.",
+          "template": [
+            "enum MyEnum {",
+            "    A { name: String, x: u8 },",
+            "    B { name: String },",
+            "}",
+            "{code}"
+          ]
+        },
+        "3": {
+          "first_line": "let job = {",
+          "template": [
+            "#[derive(Clone)]",
+            "struct Config;",
+            "fn run(_cfg: Config, _data: Vec<u8>) {}",
+            "fn spawn_job(cfg: &Config, data: Vec<u8>) {",
+            "{code}",
+            "    let _ = job;",
+            "}"
+          ]
+        },
+        "4": {
+          "first_line": "const _: () = {",
+          "template": [
+            "pub struct MyClient;",
+            "{code}"
+          ]
+        }
+      }
+    },
+    "skills/rust-best-practices/references/google-rust-style-guide.md": {
+      "blocks": {
+        "1": {
+          "first_line": "use foo::bar::{Bar, Baz};  // OK",
+          "skip": "contrasts two ways to write the same import, so both lines import Bar"
+        },
+        "2": {
+          "first_line": "/// Finds the first `FooItem` with the given `name`, or `None` if not present.",
+          "template": [
+            "{code}",
+            "pub fn find(name: String) -> Option<u32> {",
+            "    let _ = name;",
+            "    None",
+            "}"
+          ]
+        },
+        "3": {
+          "first_line": "assert!(self.stream.is_some(), \"Call connect() before executing queries\");",
+          "template": [
+            "struct Client {",
+            "    stream: Option<u32>,",
+            "}",
+            "impl Client {",
+            "fn query(&self) {",
+            "{code}",
+            "}",
+            "}"
+          ]
+        }
+      }
+    },
+    "skills/rust-best-practices/references/rust-api-guidelines.md": {
+      "blocks": {
+        "1": {
+          "first_line": "/// ```",
+          "template": [
+            "{code}",
+            "pub fn parse_it(s: &str) -> Result<u32, std::num::ParseIntError> {",
+            "    s.parse()",
+            "}"
+          ]
+        }
+      }
+    },
+    "skills/rust-best-practices/references/rust-design-patterns.md": {
+      "blocks": {
+        "1": {
+          "first_line": "fn three_vowels(word: &str) -> bool { /* ... */ }",
+          "template": [
+            "fn example() {",
+            "{code}",
+            "}"
+          ]
+        },
+        "2": {
+          "first_line": "let conf = MyConfiguration { check: true, ..Default::default() };",
+          "template": [
+            "#[derive(Default)]",
+            "struct MyConfiguration {",
+            "    check: bool,",
+            "    verbose: bool,",
+            "}",
+            "fn example() {",
+            "{code}",
+            "}"
+          ]
+        },
+        "3": {
+          "first_line": "fn a_to_b(e: &mut MyEnum) {",
+          "template": [
+            "use std::mem;",
+            "enum MyEnum {",
+            "    A { name: String, x: u8 },",
+            "    B { name: String },",
+            "}",
+            "{code}"
+          ]
+        },
+        "4": {
+          "first_line": "let readable: &mut dyn io::Read = if arg == \"-\" {",
+          "template": [
+            "use std::{fs, io};",
+            "fn open(arg: &str) -> io::Result<()> {",
+            "{code}",
+            "    let _ = readable;",
+            "    Ok(())",
+            "}"
+          ]
+        },
+        "5": {
+          "first_line": "let closure = {",
+          "template": [
+            "use std::rc::Rc;",
+            "fn example() {",
+            "    let num1 = Rc::new(1);",
+            "    let num2 = Rc::new(2);",
+            "    let num3 = Rc::new(3);",
+            "{code}",
+            "    let _ = closure;",
+            "}"
+          ]
+        }
+      }
+    }
+  }
+}
