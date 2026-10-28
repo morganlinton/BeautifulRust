@@ -248,7 +248,8 @@ cargo clippy --all-targets --all-features -- -D warnings
 
 It flags `unwrap()` outside tests, `unsafe` blocks without a `// SAFETY:` comment, `#[allow]`
 without a reason, any `bool` function parameter, silent lossy `as` casts, missing `# Errors`
-and `# Panics` docs, and leftover `dbg!` and `todo!`. Lints marked `[lib]` in the file are
+and `# Panics` docs, `assert!` without a message, exported enums that aren't
+`#[non_exhaustive]`, and leftover `dbg!` and `todo!`. Lints marked `[lib]` in the file are
 for libraries, and applications can drop them. Bevy crates need four extra allows,
 listed in the [Bevy reference](skills/rust-best-practices/references/bevy.md#keep-bevys-conventions),
 because the table otherwise flags every idiomatic system signature.

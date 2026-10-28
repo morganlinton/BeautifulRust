@@ -31,6 +31,7 @@ expect_used = "allow"                    # expect with a reason is the sanctione
 panic_in_result_fn = "warn"              # a fn returning Result shouldn't also panic
 missing_panics_doc = "warn"              # [lib] document reachable panics under # Panics
 missing_errors_doc = "warn"              # [lib] document failures under # Errors
+missing_assert_message = "warn"          # assert! says what went wrong (quiet inside #[test])
 
 # Suppressions must explain themselves and expire when no longer needed.
 allow_attributes = "warn"                # prefer #[expect] over #[allow] (needs rust-version 1.81+)
@@ -46,6 +47,9 @@ struct_excessive_bools = "warn"          # many bool fields: use an enum or bitf
 clone_on_ref_ptr = "warn"                # write Rc::clone(&x) so cheap clones are visible
 redundant_clone = "warn"                 # a clone whose original is never used again
 rc_buffer = "warn"                       # Rc<String> / Rc<Vec<T>>: use Rc<str> / Rc<[T]>
+
+# Evolution.
+exhaustive_enums = "warn"                # [lib] exported enums are #[non_exhaustive] (quiet in binaries)
 
 # Idioms.
 string_add = "warn"                      # build strings with format! or push_str, not +

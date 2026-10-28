@@ -31,6 +31,12 @@ All notable changes to this project are listed here. Versions follow
   `cargo check`, and reports errors at the markdown line. `scripts/examples.json` holds
   the surrounding code that fragments need to compile, or the reason a block is
   skipped. CI runs it on every push and pull request. Contributed by @tmchow in #4.
+- **Two more lints in `lints/lints.toml`.** `clippy::missing_assert_message` flags an
+  `assert!` with no message, the checklist rule from the Google Rust Style Guide's "Use
+  context strings to clarify assertions"; it stays quiet inside `#[test]` functions.
+  `clippy::exhaustive_enums` (`[lib]`) flags an exported enum without
+  `#[non_exhaustive]`, the lint the same guide names for that rule; binary crates
+  export nothing, so it never fires there. `lints/check/` proves both fire.
 
 ### Changed
 
