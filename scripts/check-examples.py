@@ -231,7 +231,7 @@ def render(block: Block, harness_label: str) -> str:
 def build_crate(crate: Path, blocks: List[Block]) -> Dict[str, Block]:
     (crate / "src").mkdir(parents=True)
     (crate / "Cargo.toml").write_text(
-        '[package]\nname = "examples-check"\nversion = "0.0.0"\nedition = "2021"\n'
+        '[package]\nname = "examples-check"\nversion = "0.0.0"\nedition = "2024"\n'
         "publish = false\n\n[lib]\npath = \"src/lib.rs\"\n\n[workspace]\n",
         encoding="utf-8",
     )

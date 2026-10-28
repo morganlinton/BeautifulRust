@@ -169,6 +169,26 @@
         }
       }
     },
+    "skills/rust-best-practices/references/bevy.md": {
+      "blocks": {
+        "1": {
+          "first_line": "fn apply_hits(",
+          "skip": "needs the bevy crate; the generated crate has no dependencies (checked by hand against bevy 0.20.0)"
+        },
+        "2": {
+          "first_line": "// check_wave_cleared must not run after spawn_wave's spawns are queued but not",
+          "skip": "needs the bevy crate; the generated crate has no dependencies (checked by hand against bevy 0.20.0)"
+        },
+        "3": {
+          "first_line": "fn contact_damage(player: Single<(Entity, &Position), With<Player>>) {",
+          "skip": "needs the bevy crate; the generated crate has no dependencies (checked by hand against bevy 0.20.0)"
+        },
+        "4": {
+          "first_line": "#[test]",
+          "skip": "needs the bevy crate; the generated crate has no dependencies (checked by hand against bevy 0.20.0)"
+        }
+      }
+    },
     "skills/rust-best-practices/references/google-rust-style-guide.md": {
       "blocks": {
         "1": {
