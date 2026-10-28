@@ -1,0 +1,15 @@
+[package]
+name = "arena"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97.1"
+publish = false
+
+[dependencies]
+bevy = { version = "=0.20.0", default-features = false }
+
+[lints.clippy]
+# System signatures with several queries are normal in ECS code; Bevy's own
+# workspace allows both of these.
+type_complexity = "allow"
+too_many_arguments = "allow"

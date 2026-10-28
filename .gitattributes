@@ -1,3 +1,4 @@
 # Keep GitHub's language bar about Rust: the banner/icon generator is a
 # one-off art script, not part of the project.
 assets/banner.py linguist-vendored
+benchmarks/** linguist-vendored

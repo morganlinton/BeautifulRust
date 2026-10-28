@@ -23,8 +23,7 @@ Where they disagree, this file says which to follow and why.
   a "base" struct, `Manager`/`Factory` types, `throw_if_null` helpers) are smells.
 - **Make invalid states unrepresentable.** Push invariants into types: enums instead of
   bool flags and "must be X if Y" comments, newtypes for units and IDs, fallible
-  constructors that validate once. The compiler then enforces what a comment could only
-  request.
+  constructors that validate once. Then the compiler enforces what a comment only requests.
 - **Application code is not library code.** Library code (anything with external users)
   follows the API-design rules below strictly. Application code should favor simplicity
   and directness: concrete types, `anyhow`-style errors, `Vec` return values, no
@@ -284,7 +283,7 @@ Pick the mechanism by contract:
 input, never rely on `catch_unwind` for control flow (it does nothing under
 `panic = "abort"` and can leave state inconsistent), and never catch a panic and continue
 inside a library. Where a panicking convenience is justified, pair it with a fallible API
-(`get` / `get_unchecked`, `new` / `try_new`) and document it under `# Panics`.
+(`v[i]` / `v.get(i)`, `new` / `try_new`) and document it under `# Panics`.
 
 **Every intentional panic carries a message with the relevant values:**
 `assert!(buf.len() >= HEADER, "buffer too small: {} bytes", buf.len())`,
@@ -353,8 +352,8 @@ panic, `# Safety` for every `unsafe fn`.
 - **Import style:** one `use` per module path (`use foo::bar::{Bar, Baz};`); types and
   traits imported and used unqualified (`Regex`); free functions qualified by their module
   (`mem::take`, `fs::read`). Import a trait inside the function that needs it unless the
-  whole file uses it. No glob imports except `use super::*` in test modules and
-  `use Enum::*` inside a function that matches on it.
+  whole file uses it. No globs except `use super::*` in tests, `use Enum::*` in a function
+  that matches on it, and a framework's prelude such as `use bevy::prelude::*`.
 - **Magic numbers** become named `const`s with a doc comment saying where the value
   comes from and what changing it affects.
 - **Logging:** structured events through `tracing` or `log`, not `println!` / `dbg!`,
@@ -488,7 +487,7 @@ Before returning Rust code, confirm:
 - No `bool` parameters in public signatures; no hand-written `Ord` without matching
   `PartialEq` and `Hash`.
 - No `.clone()` whose only job is to satisfy the borrow checker.
-- No glob imports, no preludes, no glob re-exports, no leaked third-party types.
+- No globs (bar a framework's prelude), no preludes of your own, no leaked third-party types.
 - Every `unsafe` block has a `// SAFETY:` comment; every `unsafe fn` has `# Safety` docs.
 - Public items have docs with a one-line summary and `# Errors` / `# Panics` where relevant.
 - Application code stayed simple; library code followed the API rules.
@@ -509,3 +508,4 @@ Each is a condensed digest of one source.
   error struct design, panic policy, unsafe policy, async, workspace layout, performance.
 - `references/google-rust-style-guide.md` (https://google.github.io/styleguide/rustguide.html):
   formatting, imports, module layout, accessor naming, application vs library.
+- `references/bevy.md` (https://docs.rs/bevy/0.20.0): read first if the crate uses Bevy.

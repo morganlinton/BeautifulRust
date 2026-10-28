@@ -1,0 +1,14 @@
+schema_version: "1.1"
+name: review-bevy-arena
+context:
+  scaffold_script: place-files.sh
+expected_outcome: |
+  REVIEW.md is a prioritized review of the arena crate (Bevy 0.20) that does not modify
+  the code. It finds the two ECS bugs: apply_hits has two `&mut Health` queries that
+  conflict (Bevy error B0001), so ArenaPlugin panics on its first frame, and spawn_wave
+  and check_wave_cleared are unordered, so check_wave_cleared can run after spawn_wave
+  before its deferred Commands apply and start a second wave. It also flags the
+  `single().unwrap()` that panics once the player dies and the `critical: bool`
+  parameter. It leaves valid Bevy patterns alone: by-value system parameters,
+  `use bevy::prelude::*`, public fields on plain-data components, and a complex query
+  type. Each finding cites a file:line location and a rule, with a code fix.

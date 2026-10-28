@@ -1,0 +1,13 @@
+schema_version: "1.1"
+name: bevy-arena-regen
+context:
+  scaffold_script: place-files.sh
+expected_outcome: |
+  The arena crate (Bevy 0.20) gains health regeneration: a component gives an entity HP
+  over time up to a maximum, and regeneration pauses for 3 seconds after the entity
+  takes a hit. The new system is wired into ArenaPlugin and ordered after apply_hits so
+  a hit in the same frame resets the pause. It follows Bevy's conventions instead of
+  fighting them: system parameters by value, the bevy prelude, plain-data components
+  with public fields, and no unwrap on queries. New tests drive the system through a
+  headless App with manually advanced Time, the existing tests still pass, clippy is
+  clean, and existing code is not rewritten beyond what the feature needs.

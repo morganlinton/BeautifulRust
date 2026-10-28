@@ -27,6 +27,10 @@ what to fix. Only rewrite code when the user asks for that.
   errors, and no speculative generality. Say which you assumed at the top of the report.
 - **The edition and MSRV**, from `Cargo.toml`, so you don't recommend features the
   project can't use.
+- **Frameworks.** If the crate depends on `bevy` or `bevy_ecs`, read the Bevy digest
+  (`bevy.md`) in the `rust-best-practices` skill's references first. It lists the Bevy
+  conventions to leave alone (by-value system parameters, the prelude, plain-data
+  components) and the ECS bugs to look for.
 
 ## 2. Run the tools first, if you can
 
@@ -58,6 +62,9 @@ Work through these in order. The first two categories are where real bugs live.
   disagrees with `Eq`. These silently corrupt `BTreeMap`, `HashMap`, `sort`, and `dedup`.
 - Lock hazards: a `MutexGuard` held across `.await` or returned to a caller, user
   closures called under a lock, or a poisoned lock recovered with `into_inner`.
+- ECS bugs in Bevy code: two queries that can reach the same component mutably (a
+  B0001 panic on the first frame), systems that read each other's results with no
+  order between them, and deferred `Commands` read back before they apply.
 - Destructors that panic, block, or can fail.
 
 **Error handling**
@@ -92,7 +99,7 @@ Work through these in order. The first two categories are where real bugs live.
   long enough to need a loop.
 - `HashMap` iteration order leaking into output or tests.
 - `#![deny(warnings)]` in source, `#[allow]` without a reason, and glob imports of
-  external crates.
+  external crates (a framework's documented prelude, such as `bevy::prelude`, is fine).
 
 **Documentation and tests**
 

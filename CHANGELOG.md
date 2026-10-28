@@ -6,11 +6,43 @@ All notable changes to this project are listed here. Versions follow
 
 ## [Unreleased]
 
-- `scripts/check-examples.py` compiles every Rust code block in the skills, the
-  reference digests, the README, and `examples/` with `cargo check`, and reports
-  errors at the markdown line. `scripts/examples.json` holds the surrounding code that
-  fragments need to compile, or the reason a block is skipped. CI runs it on push and
-  pull request.
+### Added
+
+- **Bevy support.** `skills/rust-best-practices/references/bevy.md` covers Bevy 0.20.
+  It says which general rules don't apply to systems: by-value system parameters, the
+  Bevy prelude, public fields on plain-data components, and complex query types. It
+  lists the ECS bugs that compile cleanly: conflicting queries (B0001), deferred
+  `Commands`, systems with no order between them, and unwrapped `single()`. It also
+  gives the four lint allows a Bevy crate needs on top of `lints/lints.toml`. Every
+  behavior it describes was confirmed with a test on bevy 0.20.0. Both the writing and
+  review skills read it when a crate depends on `bevy`. Proposed by @millionart in #5.
+- **Two Bevy eval cases.** `rust-review/evals/review-bevy-arena` plants a query conflict
+  and an ordering bug in a combat plugin whose tests pass, alongside valid Bevy patterns
+  the review should leave alone. `rust-best-practices/evals/bevy-arena-regen` adds a
+  feature to the fixed plugin and checks that Bevy's conventions survive. Both pin
+  `bevy = "=0.20.0"` and ship a `Cargo.lock`.
+- **A cross-agent benchmark.** `benchmarks/cross-agent-2026-10/` ran all eight eval cases
+  on Claude Code and Codex CLI, with and without the skills, and graded them blind. The
+  skills raised Codex from 53/85 to 76/85 and Claude from 72/85 to 80/85. The page
+  includes every assertion result, the harness, and the caveats, including one case
+  where the skills made Claude worse.
+- **Every Rust example is compiled.** `scripts/check-examples.py` compiles each Rust
+  code block in the skills, the reference digests, the README, and `examples/` with
+  `cargo check`, and reports errors at the markdown line. `scripts/examples.json` holds
+  the surrounding code that fragments need to compile, or the reason a block is
+  skipped. CI runs it on every push and pull request. Contributed by @tmchow in #4.
+
+### Changed
+
+- The glob-import rule in both skills allows a framework's documented prelude, such as
+  `use bevy::prelude::*`. Clippy's `wildcard_imports` already exempts these.
+
+### Fixed
+
+- The Errors section paired `get` with `get_unchecked` as a fallible API and its
+  panicking twin, but an out-of-bounds `get_unchecked` is undefined behavior, not a
+  panic. It now pairs indexing (`v[i]`, which panics) with `v.get(i)`. Reported and
+  fixed by @DylanCosto in #3 and #6.
 
 ## [1.4.0] - 2026-10-26
 

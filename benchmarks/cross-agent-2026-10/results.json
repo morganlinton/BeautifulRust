@@ -1,0 +1,2122 @@
+{
+ "bevy-arena-regen": {
+  "claude-with": [
+   {
+    "grader": "01-builds-and-tests-pass.md",
+    "text": "The crate builds with cargo build and every test passes with cargo test, including the seven existing tests and the new ones",
+    "passed": true,
+    "evidence": "cargo build succeeds and cargo test reports 16 passed, 0 failed in tests/arena.rs (7 original tests plus 9 new)."
+   },
+   {
+    "grader": "02-regen-tested-headless.md",
+    "text": "New tests run the regeneration system through a headless App with app.update() and manually advanced Time (or an equivalent deterministic clock), covering both regeneration capped at the maximum and the 3-second pause after a hit",
+    "passed": true,
+    "evidence": "tests/arena.rs:145-158 builds a headless App with Time advanced via advance_by + app.update(); regen_restores_health_up_to_the_maximum (line 170) checks the cap at 100 and a_hit_pauses_regen_for_three_seconds (line 218) checks the 3 s pause."
+   },
+   {
+    "grader": "03-system-params-by-value.md",
+    "text": "Every new system takes Res, ResMut, Query, Commands, Single, MessageReader, or Local parameters by value, and no existing system signature was changed to take references",
+    "passed": true,
+    "evidence": "New systems regenerate_health(time: Res<Time>, mut units: Query<...>) at src/lib.rs:262 and interrupt_regen(mut hits: MessageReader<Hit>, mut regens: Query<&mut Regen>) at :277 take params by value; no existing signature changed types."
+   },
+   {
+    "grader": "04-keeps-bevy-prelude.md",
+    "text": "The crate still imports Bevy with use bevy::prelude::* rather than replacing it with a long list of explicit imports",
+    "passed": true,
+    "evidence": "src/lib.rs:5 and tests/arena.rs:4 still use bevy::prelude::*; only std::time::Duration was added."
+   },
+   {
+    "grader": "05-plain-data-components.md",
+    "text": "New components and resources for regeneration are plain data (public fields or a simple constructor), and no getters or setters were added to the existing components",
+    "passed": false,
+    "evidence": "Regen (src/lib.rs:46) has all-private fields, a validating constructor that panics, and getters per_second()/max()/is_paused() (lines 75-87) plus behavior methods; it is an encapsulated type, not plain data with public fields."
+   },
+   {
+    "grader": "06-ordered-after-damage.md",
+    "text": "The regeneration system has an explicit order relative to the damage systems: it is in the same chain as apply_hits or ordered with .after(...) on apply_hits or contact_damage, so a hit landing this frame resets the pause before regeneration runs, rather than depending on an ambiguous order",
+    "passed": false,
+    "evidence": "Chain is apply_hits, regenerate_health, interrupt_regen (src/lib.rs:184-186): the pause is reset by interrupt_regen after regenerate_health runs, so a hit this frame does not reset the pause before regeneration runs (the doc at :274-276 says this is deliberate)."
+   },
+   {
+    "grader": "07-no-panicking-queries.md",
+    "text": "The new code has no unwrap() or expect() on query results such as single(), get(), or get_mut(); missing entities are handled without panicking",
+    "passed": true,
+    "evidence": "Systems use if let Ok(..) = regens.get_mut(..) (src/lib.rs:279) with no unwrap/expect; the only expect is in a test (tests/arena.rs:327) on single(), which is a test assertion, not runtime handling."
+   },
+   {
+    "grader": "08-clippy-clean.md",
+    "text": "cargo clippy --all-targets reports no warnings with the crate's lint configuration",
+    "passed": true,
+    "evidence": "cargo clippy --all-targets with the crate's [lints.clippy] config finishes with no warnings."
+   },
+   {
+    "grader": "09-health-never-exceeds-max.md",
+    "text": "Regeneration never raises an entity's health above its maximum, and the tests check the cap",
+    "passed": true,
+    "evidence": "Regen::tick caps gained at max - health (src/lib.rs:110) and returns 0 at or above max; tests assert Health(100) after overshooting and that Health(120) is left alone."
+   },
+   {
+    "grader": "10-existing-code-not-rewritten.md",
+    "text": "Existing functions, components, and tests are left as they were apart from the wiring the feature needs (for example adding the new system to ArenaPlugin or recording when a hit landed); nothing unrelated was renamed or restructured",
+    "passed": false,
+    "evidence": "diff vs original shows rustfmt reflow of unrelated existing code: stun_wounded's query type (src/lib.rs:290-293), spawn_wave's direction line, and every original test body in tests/arena.rs (e.g. lines 17-42, 79-82)."
+   }
+  ],
+  "claude-without": [
+   {
+    "grader": "01-builds-and-tests-pass.md",
+    "text": "The crate builds with cargo build and every test passes with cargo test, including the seven existing tests and the new ones",
+    "passed": true,
+    "evidence": "cargo build succeeds and cargo test reports 15 passed, 0 failed (7 original tests plus 8 new)."
+   },
+   {
+    "grader": "02-regen-tested-headless.md",
+    "text": "New tests run the regeneration system through a headless App with app.update() and manually advanced Time (or an equivalent deterministic clock), covering both regeneration capped at the maximum and the 3-second pause after a hit",
+    "passed": true,
+    "evidence": "regen_app/step (tests/arena.rs:112-125) run apply_hits+regenerate_health headless with Time::advance_by and app.update(); regen_stops_at_the_maximum (:164) checks the cap and a_damaging_hit_pauses_regen_for_three_seconds (:186) checks the 3 s pause."
+   },
+   {
+    "grader": "03-system-params-by-value.md",
+    "text": "Every new system takes Res, ResMut, Query, Commands, Single, MessageReader, or Local parameters by value, and no existing system signature was changed to take references",
+    "passed": true,
+    "evidence": "regenerate_health(time: Res<Time>, mut units: Query<...>) at src/lib.rs:244 is by value; apply_hits gained Option<&mut Regen> in its Query types but its params remain by value, not references."
+   },
+   {
+    "grader": "04-keeps-bevy-prelude.md",
+    "text": "The crate still imports Bevy with use bevy::prelude::* rather than replacing it with a long list of explicit imports",
+    "passed": true,
+    "evidence": "src/lib.rs:5 and tests/arena.rs:4 keep use bevy::prelude::*; only std::time::Duration was added."
+   },
+   {
+    "grader": "05-plain-data-components.md",
+    "text": "New components and resources for regeneration are plain data (public fields or a simple constructor), and no getters or setters were added to the existing components",
+    "passed": true,
+    "evidence": "Regen (src/lib.rs:40) exposes pub per_second and pub max with a simple new() constructor; private progress/paused_for are internal state, and no getters/setters were added to existing components."
+   },
+   {
+    "grader": "06-ordered-after-damage.md",
+    "text": "The regeneration system has an explicit order relative to the damage systems: it is in the same chain as apply_hits or ordered with .after(...) on apply_hits or contact_damage, so a hit landing this frame resets the pause before regeneration runs, rather than depending on an ambiguous order",
+    "passed": true,
+    "evidence": "Chain is (move_units, contact_damage, apply_hits, regenerate_health, stun_wounded).chain() (src/lib.rs:163), and apply_hits itself calls regen.interrupt(), so the pause is reset before regeneration runs."
+   },
+   {
+    "grader": "07-no-panicking-queries.md",
+    "text": "The new code has no unwrap() or expect() on query results such as single(), get(), or get_mut(); missing entities are handled without panicking",
+    "passed": true,
+    "evidence": "New system code uses if let / Option<&mut Regen> with no unwrap/expect; unwraps appear only in test code (tests/arena.rs:136, 193, 237) as test assertions."
+   },
+   {
+    "grader": "08-clippy-clean.md",
+    "text": "cargo clippy --all-targets reports no warnings with the crate's lint configuration",
+    "passed": true,
+    "evidence": "cargo clippy --all-targets finishes with no warnings."
+   },
+   {
+    "grader": "09-health-never-exceeds-max.md",
+    "text": "Regeneration never raises an entity's health above its maximum, and the tests check the cap",
+    "passed": true,
+    "evidence": "tick caps restored at missing = max.saturating_sub(current) (src/lib.rs:92); regen_stops_at_the_maximum asserts 95 -> 100 and 120 stays 120."
+   },
+   {
+    "grader": "10-existing-code-not-rewritten.md",
+    "text": "Existing functions, components, and tests are left as they were apart from the wiring the feature needs (for example adding the new system to ArenaPlugin or recording when a hit landed); nothing unrelated was renamed or restructured",
+    "passed": true,
+    "evidence": "diff vs original only touches the plugin's Update chain and apply_hits (adding Option<&mut Regen> and the interrupt call, i.e. recording the hit); original tests are byte-identical and only appended to."
+   }
+  ],
+  "codex-without": [
+   {
+    "grader": "01-builds-and-tests-pass.md",
+    "text": "The crate builds with cargo build and every test passes with cargo test, including the seven existing tests and the new ones",
+    "passed": true,
+    "evidence": "cargo build succeeds and cargo test reports 10 passed, 0 failed (7 original plus 3 new)."
+   },
+   {
+    "grader": "02-regen-tested-headless.md",
+    "text": "New tests run the regeneration system through a headless App with app.update() and manually advanced Time (or an equivalent deterministic clock), covering both regeneration capped at the maximum and the 3-second pause after a hit",
+    "passed": true,
+    "evidence": "advance() (tests/arena.rs:145-150) advances Time and calls app.update(); regeneration_accumulates_fractions_and_caps_health (:153) checks the cap at 10 and hits_pause_regeneration_and_repeated_hits_restart_the_pause (:180) checks the 3 s pause through ArenaPlugin headlessly."
+   },
+   {
+    "grader": "03-system-params-by-value.md",
+    "text": "Every new system takes Res, ResMut, Query, Commands, Single, MessageReader, or Local parameters by value, and no existing system signature was changed to take references",
+    "passed": true,
+    "evidence": "regenerate_health(time: Res<Time>, mut hits: MessageReader<Hit>, mut units: Query<...>) at src/lib.rs:202 is by value; no existing signature changed."
+   },
+   {
+    "grader": "04-keeps-bevy-prelude.md",
+    "text": "The crate still imports Bevy with use bevy::prelude::* rather than replacing it with a long list of explicit imports",
+    "passed": true,
+    "evidence": "src/lib.rs:5 and tests/arena.rs:4 keep use bevy::prelude::*."
+   },
+   {
+    "grader": "05-plain-data-components.md",
+    "text": "New components and resources for regeneration are plain data (public fields or a simple constructor), and no getters or setters were added to the existing components",
+    "passed": true,
+    "evidence": "Regen (src/lib.rs:14) has pub max_health and pub health_per_second with a simple new() (:23); no getters/setters on existing components."
+   },
+   {
+    "grader": "06-ordered-after-damage.md",
+    "text": "The regeneration system has an explicit order relative to the damage systems: it is in the same chain as apply_hits or ordered with .after(...) on apply_hits or contact_damage, so a hit landing this frame resets the pause before regeneration runs, rather than depending on an ambiguous order",
+    "passed": true,
+    "evidence": "regenerate_health is in the same .chain() after apply_hits (src/lib.rs:123-125) and resets the cooldown from this frame's Hit messages before healing."
+   },
+   {
+    "grader": "07-no-panicking-queries.md",
+    "text": "The new code has no unwrap() or expect() on query results such as single(), get(), or get_mut(); missing entities are handled without panicking",
+    "passed": true,
+    "evidence": "System uses if let Ok(..) = units.get_mut(..) with no unwrap/expect; the only unwrap is on single() in a test (tests/arena.rs:188) as a test assertion."
+   },
+   {
+    "grader": "08-clippy-clean.md",
+    "text": "cargo clippy --all-targets reports no warnings with the crate's lint configuration",
+    "passed": true,
+    "evidence": "cargo clippy --all-targets finishes with no warnings."
+   },
+   {
+    "grader": "09-health-never-exceeds-max.md",
+    "text": "Regeneration never raises an entity's health above its maximum, and the tests check the cap",
+    "passed": true,
+    "evidence": "Healing is clamped with .min(regen.max_health) (src/lib.rs:230) and skipped at or above max; test asserts Health(10) cap and Health(12) left alone."
+   },
+   {
+    "grader": "10-existing-code-not-rewritten.md",
+    "text": "Existing functions, components, and tests are left as they were apart from the wiring the feature needs (for example adding the new system to ArenaPlugin or recording when a hit landed); nothing unrelated was renamed or restructured",
+    "passed": false,
+    "evidence": "diff vs original shows rustfmt reflow of unrelated code: stun_wounded's query type (src/lib.rs:242-245), spawn_wave's direction line, and every original test body in tests/arena.rs (e.g. lines 17-42, 79-82)."
+   }
+  ],
+  "codex-with": [
+   {
+    "grader": "01-builds-and-tests-pass.md",
+    "text": "The crate builds with cargo build and every test passes with cargo test, including the seven existing tests and the new ones",
+    "passed": true,
+    "evidence": "cargo build succeeds and cargo test reports 10 passed, 0 failed (7 original plus 3 new)."
+   },
+   {
+    "grader": "02-regen-tested-headless.md",
+    "text": "New tests run the regeneration system through a headless App with app.update() and manually advanced Time (or an equivalent deterministic clock), covering both regeneration capped at the maximum and the 3-second pause after a hit",
+    "passed": true,
+    "evidence": "advance() (tests/arena.rs:145-148) advances Time and calls app.update(); the test at :151 checks the cap at 10 and plugin_hits_pause_regeneration_and_repeated_hits_restart_the_pause (:180) checks the 3 s pause through ArenaPlugin."
+   },
+   {
+    "grader": "03-system-params-by-value.md",
+    "text": "Every new system takes Res, ResMut, Query, Commands, Single, MessageReader, or Local parameters by value, and no existing system signature was changed to take references",
+    "passed": true,
+    "evidence": "regenerate_health(time: Res<Time>, mut hits: MessageReader<Hit>, mut units: Query<...>) at src/lib.rs:262 is by value; no existing signature changed."
+   },
+   {
+    "grader": "04-keeps-bevy-prelude.md",
+    "text": "The crate still imports Bevy with use bevy::prelude::* rather than replacing it with a long list of explicit imports",
+    "passed": true,
+    "evidence": "src/lib.rs:5 and tests/arena.rs:4 keep use bevy::prelude::*."
+   },
+   {
+    "grader": "05-plain-data-components.md",
+    "text": "New components and resources for regeneration are plain data (public fields or a simple constructor), and no getters or setters were added to the existing components",
+    "passed": true,
+    "evidence": "Regen (src/lib.rs:16) is a data struct with a simple new(max_health, per_second) constructor (:26) and no getters/setters; existing components untouched."
+   },
+   {
+    "grader": "06-ordered-after-damage.md",
+    "text": "The regeneration system has an explicit order relative to the damage systems: it is in the same chain as apply_hits or ordered with .after(...) on apply_hits or contact_damage, so a hit landing this frame resets the pause before regeneration runs, rather than depending on an ambiguous order",
+    "passed": true,
+    "evidence": "regenerate_health is in the same .chain() after apply_hits (src/lib.rs:129-131) and sets blocked_until from this frame's hits before healing."
+   },
+   {
+    "grader": "07-no-panicking-queries.md",
+    "text": "The new code has no unwrap() or expect() on query results such as single(), get(), or get_mut(); missing entities are handled without panicking",
+    "passed": true,
+    "evidence": "System uses if let Ok(..) = units.get_mut(..); no unwrap() or expect() anywhere in the new code, including tests."
+   },
+   {
+    "grader": "08-clippy-clean.md",
+    "text": "cargo clippy --all-targets reports no warnings with the crate's lint configuration",
+    "passed": true,
+    "evidence": "cargo clippy --all-targets finishes with no warnings."
+   },
+   {
+    "grader": "09-health-never-exceeds-max.md",
+    "text": "Regeneration never raises an entity's health above its maximum, and the tests check the cap",
+    "passed": true,
+    "evidence": "restored is clamped to missing = max_health - health (src/lib.rs:283) and skipped at or above max; test asserts 'healing is capped' at Health(10) and Health(12) left alone."
+   },
+   {
+    "grader": "10-existing-code-not-rewritten.md",
+    "text": "Existing functions, components, and tests are left as they were apart from the wiring the feature needs (for example adding the new system to ArenaPlugin or recording when a hit landed); nothing unrelated was renamed or restructured",
+    "passed": false,
+    "evidence": "diff vs original shows rustfmt reflow of unrelated code: stun_wounded's query type (src/lib.rs:210-213), spawn_wave's direction line, and every original test body in tests/arena.rs (e.g. lines 17-42, 79-82)."
+   }
+  ]
+ },
+ "log-summary-cli": {
+  "codex-with": [
+   {
+    "grader": "01-never-panics-on-bad-input.md",
+    "text": "The program never panics on bad input: main returns a Result, or returns an ExitCode derived from a Result-returning function, and every failure is reported as a message",
+    "passed": true,
+    "evidence": "src/main.rs:114-124 main returns ExitCode derived from run() -> io::Result<bool>; no unwrap/expect on input paths. Running against a missing dir, a chmod-000 file and garbage/invalid-UTF-8 lines printed messages and exited 1, no panic."
+   },
+   {
+    "grader": "02-errors-name-the-file.md",
+    "text": "Error messages shown to the user name the offending file path",
+    "passed": true,
+    "evidence": "src/main.rs:81-83 and 99-103 wrap errors with path.display(); observed 'logsum: .../nope-dir: No such file or directory' and 'logsum: .../locked.jsonl: Permission denied'."
+   },
+   {
+    "grader": "03-malformed-lines-counted.md",
+    "text": "Malformed lines are counted and skipped rather than propagated or panicked on, and unreadable files are reported without aborting the whole run",
+    "passed": true,
+    "evidence": "src/main.rs:34-40 counts parse failures into skipped; per-file errors at 105-108 are printed and the loop continues. Fixture run reported locked.jsonl and still printed the table with 'Skipped lines: 2'."
+   },
+   {
+    "grader": "04-paths-as-path-types.md",
+    "text": "The directory argument and file paths are handled as Path or PathBuf (or impl AsRef<Path>), not passed around as bare Strings",
+    "passed": true,
+    "evidence": "src/main.rs:80 Path::new(&directory) from args_os OsString; file paths are PathBuf from entry.path() (line 88)."
+   },
+   {
+    "grader": "05-sorted-and-skipped-count.md",
+    "text": "Output rows are sorted by count descending, a total is printed, and the number of skipped lines is reported",
+    "passed": true,
+    "evidence": "src/main.rs:46-48 sorts count desc then level; 64 prints TOTAL, 65 prints 'Skipped lines'. Test output_is_sorted_and_has_totals passes."
+   },
+   {
+    "grader": "06-dependency-ranges.md",
+    "text": "Cargo.toml specifies serde and serde_json with version ranges such as \"1\" or \"1.0\", not \"*\"",
+    "passed": true,
+    "evidence": "Cargo.toml: serde = { version = \"1\", ... }, serde_json = \"1\"."
+   },
+   {
+    "grader": "07-map-based-counting.md",
+    "text": "Per-level counting uses a HashMap or BTreeMap keyed by level",
+    "passed": true,
+    "evidence": "src/main.rs:21 counts: HashMap<String, u64>; line 36 entry(event.level).or_default() += 1."
+   },
+   {
+    "grader": "08-aggregation-unit-tested.md",
+    "text": "The counting/aggregation logic lives in a function outside main and is covered by at least one unit test",
+    "passed": true,
+    "evidence": "Summary::read (src/main.rs:27-42) holds the counting; tests counts_events_and_skips_invalid_records and output_is_sorted_and_has_totals (126-153); cargo test: 2 passed."
+   }
+  ],
+  "codex-without": [
+   {
+    "grader": "01-never-panics-on-bad-input.md",
+    "text": "The program never panics on bad input: main returns a Result, or returns an ExitCode derived from a Result-returning function, and every failure is reported as a message",
+    "passed": true,
+    "evidence": "src/main.rs:104-123 main returns ExitCode derived from summarize() -> io::Result<bool>; no unwrap/expect. Fixture run with missing dir, unreadable file and garbage lines printed messages, exit 1, no panic."
+   },
+   {
+    "grader": "02-errors-name-the-file.md",
+    "text": "Error messages shown to the user name the offending file path",
+    "passed": false,
+    "evidence": "src/main.rs:18 fs::read_dir(directory)? propagates a bare io::Error; observed output for a missing directory was 'logsum: No such file or directory (os error 2)' with no path. Line 27 directory-entry error also omits the path."
+   },
+   {
+    "grader": "03-malformed-lines-counted.md",
+    "text": "Malformed lines are counted and skipped rather than propagated or panicked on, and unreadable files are reported without aborting the whole run",
+    "passed": true,
+    "evidence": "src/main.rs:63-66 counts parse failures as skipped; open/read errors at 49-56 and 67-71 are printed and the loop continues. Fixture run reported locked.jsonl and still printed the table."
+   },
+   {
+    "grader": "04-paths-as-path-types.md",
+    "text": "The directory argument and file paths are handled as Path or PathBuf (or impl AsRef<Path>), not passed around as bare Strings",
+    "passed": true,
+    "evidence": "src/main.rs:17 summarize(directory: &Path, ...); line 114 Path::new(&directory) from OsString; file paths are PathBuf from entry.path()."
+   },
+   {
+    "grader": "05-sorted-and-skipped-count.md",
+    "text": "Output rows are sorted by count descending, a total is printed, and the number of skipped lines is reported",
+    "passed": true,
+    "evidence": "src/main.rs:78-80 sorts by count desc; 96 prints TOTAL; 97-100 prints the skipped count. Observed in fixture output."
+   },
+   {
+    "grader": "06-dependency-ranges.md",
+    "text": "Cargo.toml specifies serde and serde_json with version ranges such as \"1\" or \"1.0\", not \"*\"",
+    "passed": true,
+    "evidence": "Cargo.toml: serde = { version = \"1\", ... }, serde_json = \"1\"."
+   },
+   {
+    "grader": "07-map-based-counting.md",
+    "text": "Per-level counting uses a HashMap or BTreeMap keyed by level",
+    "passed": true,
+    "evidence": "src/main.rs:19 counts: HashMap<String, u64>; line 64 entry(event.level).or_default() += 1."
+   },
+   {
+    "grader": "08-aggregation-unit-tested.md",
+    "text": "The counting/aggregation logic lives in a function outside main and is covered by at least one unit test",
+    "passed": false,
+    "evidence": "Counting is in summarize() outside main, but there is no #[cfg(test)] module; cargo test: 0 passed."
+   }
+  ],
+  "claude-without": [
+   {
+    "grader": "01-never-panics-on-bad-input.md",
+    "text": "The program never panics on bad input: main returns a Result, or returns an ExitCode derived from a Result-returning function, and every failure is reported as a message",
+    "passed": true,
+    "evidence": "src/main.rs:141-176 main returns ExitCode derived from parse_args() -> Result and jsonl_files() -> io::Result; unwrap appears only in tests. Missing dir and unreadable file produced messages, no panic."
+   },
+   {
+    "grader": "02-errors-name-the-file.md",
+    "text": "Error messages shown to the user name the offending file path",
+    "passed": true,
+    "evidence": "src/main.rs:153 'cannot read directory {}' and 168 'cannot read {}' use display(); observed both paths in output. (Only the rare directory-entry warning at 115 lacks a path.)"
+   },
+   {
+    "grader": "03-malformed-lines-counted.md",
+    "text": "Malformed lines are counted and skipped rather than propagated or panicked on, and unreadable files are reported without aborting the whole run",
+    "passed": true,
+    "evidence": "Summary::record_line (src/main.rs:48-54) counts parse failures; main loop 162-172 warns and increments files_failed, then continues. Fixture run reported locked.jsonl and printed the table."
+   },
+   {
+    "grader": "04-paths-as-path-types.md",
+    "text": "The directory argument and file paths are handled as Path or PathBuf (or impl AsRef<Path>), not passed around as bare Strings",
+    "passed": true,
+    "evidence": "parse_args returns PathBuf (130-139); jsonl_files(dir: &Path) -> Vec<PathBuf> (109)."
+   },
+   {
+    "grader": "05-sorted-and-skipped-count.md",
+    "text": "Output rows are sorted by count descending, a total is printed, and the number of skipped lines is reported",
+    "passed": true,
+    "evidence": "sorted_levels (73-81) sorts count desc then name; print_report prints TOTAL (99) and 'skipped lines' (101-104)."
+   },
+   {
+    "grader": "06-dependency-ranges.md",
+    "text": "Cargo.toml specifies serde and serde_json with version ranges such as \"1\" or \"1.0\", not \"*\"",
+    "passed": true,
+    "evidence": "Cargo.toml: serde = { version = \"1\", ... }, serde_json = \"1\"."
+   },
+   {
+    "grader": "07-map-based-counting.md",
+    "text": "Per-level counting uses a HashMap or BTreeMap keyed by level",
+    "passed": true,
+    "evidence": "src/main.rs:35 per_level: HashMap<String, u64>; line 50 entry(event.level).or_insert(0) += 1."
+   },
+   {
+    "grader": "08-aggregation-unit-tested.md",
+    "text": "The counting/aggregation logic lives in a function outside main and is covered by at least one unit test",
+    "passed": true,
+    "evidence": "Summary::record_line/record_reader (44-70) outside main; tests counts_levels_and_skips_garbage etc. (178-227); cargo test: 4 passed."
+   }
+  ],
+  "claude-with": [
+   {
+    "grader": "01-never-panics-on-bad-input.md",
+    "text": "The program never panics on bad input: main returns a Result, or returns an ExitCode derived from a Result-returning function, and every failure is reported as a message",
+    "passed": true,
+    "evidence": "src/main.rs:227-240 main returns ExitCode derived from run() -> anyhow::Result<ExitCode>; the only expect calls (169, 188) are on writes to a String, unreachable by input. Fixture runs printed messages, no panic."
+   },
+   {
+    "grader": "02-errors-name-the-file.md",
+    "text": "Error messages shown to the user name the offending file path",
+    "passed": true,
+    "evidence": "with_context adds paths: 102 'cannot open {}', 105 'error reading {}', 126 'cannot read directory {}'; observed both in output."
+   },
+   {
+    "grader": "03-malformed-lines-counted.md",
+    "text": "Malformed lines are counted and skipped rather than propagated or panicked on, and unreadable files are reported without aborting the whole run",
+    "passed": true,
+    "evidence": "add_lines (91-95) counts parse failures as invalid_json/missing_fields; add_file (100-114) warns and increments unreadable_files, run continues. Fixture run reported locked.jsonl and printed the table."
+   },
+   {
+    "grader": "04-paths-as-path-types.md",
+    "text": "The directory argument and file paths are handled as Path or PathBuf (or impl AsRef<Path>), not passed around as bare Strings",
+    "passed": true,
+    "evidence": "log_files(dir: &Path) -> Result<Vec<PathBuf>> (124), add_file(path: &Path) (100), run(dir: &Path) (204)."
+   },
+   {
+    "grader": "05-sorted-and-skipped-count.md",
+    "text": "Output rows are sorted by count descending, a total is printed, and the number of skipped lines is reported",
+    "passed": true,
+    "evidence": "sorted_counts (62-70) sorts count desc then name; render prints TOTAL (177) and 'skipped lines' (179-188); test render_aligns_columns_and_reports_skips passes."
+   },
+   {
+    "grader": "06-dependency-ranges.md",
+    "text": "Cargo.toml specifies serde and serde_json with version ranges such as \"1\" or \"1.0\", not \"*\"",
+    "passed": true,
+    "evidence": "Cargo.toml: serde = { version = \"1\", ... }, serde_json = \"1\" (anyhow = \"1\" too)."
+   },
+   {
+    "grader": "07-map-based-counting.md",
+    "text": "Per-level counting uses a HashMap or BTreeMap keyed by level",
+    "passed": true,
+    "evidence": "src/main.rs:41 counts: HashMap<String, u64>; line 92 entry(event.level).or_default() += 1."
+   },
+   {
+    "grader": "08-aggregation-unit-tested.md",
+    "text": "The counting/aggregation logic lives in a function outside main and is covered by at least one unit test",
+    "passed": true,
+    "evidence": "Summary::add_lines (80-97) outside main; tests counts_levels_and_sorts_by_count_then_name, skips_garbage_and_shape_mismatches_separately, etc.; cargo test: 5 passed."
+   }
+  ]
+ },
+ "port-c-config-parser": {
+  "codex-with": [
+   {
+    "grader": "01-builds-and-tests-pass.md",
+    "text": "The crate builds with cargo build and every test passes with cargo test",
+    "passed": true,
+    "evidence": "cargo build succeeds; cargo test: 10 integration tests in tests/config.rs and 1 doctest pass, 0 failed."
+   },
+   {
+    "grader": "02-clippy-clean.md",
+    "text": "cargo clippy --all-targets reports no warnings",
+    "passed": true,
+    "evidence": "cargo clippy --all-targets finished with no warnings."
+   },
+   {
+    "grader": "03-no-unsafe.md",
+    "text": "The crate contains no unsafe code and no raw pointers",
+    "passed": true,
+    "evidence": "grep for unsafe/*const/*mut in src and tests finds nothing; Cargo.toml sets unsafe_code = \"forbid\"."
+   },
+   {
+    "grader": "04-every-test-ported.md",
+    "text": "Every test function in test_config.c (test_basic, test_untrimmed_values_keep_whitespace, test_get_int_errors, test_duplicates, test_case_insensitive, test_syntax_errors, test_empty_input) has a corresponding Rust test covering the same assertions",
+    "passed": true,
+    "evidence": "tests/config.rs:6-95 has test_basic through test_empty_input with the same assertions as test_config.c (syntax cases also check line numbers)."
+   },
+   {
+    "grader": "05-errors-as-result.md",
+    "text": "Parsing returns a Result whose error type is an enum distinguishing syntax and duplicate errors and carrying the line number, instead of error codes or out-parameters",
+    "passed": true,
+    "evidence": "Config::parse returns Result<Self, ParseConfigError> (src/lib.rs:102); ParseConfigError is an enum with Syntax { line } and Duplicate { line } (src/lib.rs:28-39)."
+   },
+   {
+    "grader": "06-error-implements-error.md",
+    "text": "The error type implements std::fmt::Display and std::error::Error",
+    "passed": true,
+    "evidence": "impl fmt::Display for ParseConfigError (src/lib.rs:41) and impl Error for ParseConfigError (src/lib.rs:50); ReadIntError likewise (62-71)."
+   },
+   {
+    "grader": "07-option-for-absent.md",
+    "text": "Looking up a missing key returns None (Option), and integer lookup distinguishes a missing key from a non-numeric value without out-parameters",
+    "passed": true,
+    "evidence": "get returns Option<&str> (src/lib.rs:164); int returns Result<i64, ReadIntError> with Missing vs NotNumber (src/lib.rs:55-60,173); tests/config.rs:35-39."
+   },
+   {
+    "grader": "08-typed-flags.md",
+    "text": "The flags bitmask is replaced by a typed options struct, builder, or bitflags type, not a raw integer",
+    "passed": true,
+    "evidence": "Options struct with bool fields trim_values, allow_duplicates, case_insensitive (src/lib.rs:16-23) replaces the bitmask."
+   },
+   {
+    "grader": "09-behavior-preserved.md",
+    "text": "Behavior matches the C version on its edge cases: without value trimming a value keeps its leading whitespace, an out-of-range integer is rejected as not a number, case-insensitive mode treats A and a as duplicates, and allow-duplicates keeps the last value with a count of one",
+    "passed": true,
+    "evidence": "tests/config.rs:25 keeps \"  v\"; :38 rejects 99999999999999999999 as NotNumber; :69-71 A/a is Duplicate under case_insensitive; :56-57 allow_duplicates gives len 1 and value \"3\"; all pass."
+   },
+   {
+    "grader": "10-porting-notes.md",
+    "text": "PORTING.md maps the C API to the Rust API and the C tests to the Rust tests, and lists at least one deliberate difference from the C version",
+    "passed": true,
+    "evidence": "PORTING.md has an API mapping table, a test mapping table for all seven tests, and a Deliberate differences section (UTF-8, i64, no NOMEM)."
+   },
+   {
+    "grader": "11-proportionate.md",
+    "text": "The port is proportionate: it does not reimplement the source language's string or number semantics, it adds no public API beyond the original's operations plus standard trait impls and accessors Rust callers expect (Debug, Clone, Display, Error, FromStr, Default, IntoIterator, len/is_empty), and its code lines in src/ (excluding tests, comments, and doc comments) are under one and a half times the code lines of config.c",
+    "passed": false,
+    "evidence": "Code lines are 140 vs 164 in config.c (limit 246), but it reimplements C string semantics: input and lookup keys are truncated at the first NUL (src/lib.rs:108, 152). It also adds Config::new() (src/lib.rs:90), which is not on the allowed list."
+   }
+  ],
+  "claude-without": [
+   {
+    "grader": "01-builds-and-tests-pass.md",
+    "text": "The crate builds with cargo build and every test passes with cargo test",
+    "passed": true,
+    "evidence": "cargo build succeeds; cargo test: 25 integration tests and 1 doctest pass, 0 failed."
+   },
+   {
+    "grader": "02-clippy-clean.md",
+    "text": "cargo clippy --all-targets reports no warnings",
+    "passed": true,
+    "evidence": "cargo clippy --all-targets finished with no warnings."
+   },
+   {
+    "grader": "03-no-unsafe.md",
+    "text": "The crate contains no unsafe code and no raw pointers",
+    "passed": true,
+    "evidence": "grep for unsafe/*const/*mut in src and tests finds nothing."
+   },
+   {
+    "grader": "04-every-test-ported.md",
+    "text": "Every test function in test_config.c (test_basic, test_untrimmed_values_keep_whitespace, test_get_int_errors, test_duplicates, test_case_insensitive, test_syntax_errors, test_empty_input) has a corresponding Rust test covering the same assertions",
+    "passed": true,
+    "evidence": "tests/config.rs:16-92 has basic, untrimmed_values_keep_whitespace, get_int_errors, duplicates, case_insensitive, syntax_errors, empty_input, each with the C test's assertions (kind plus line where C checks line)."
+   },
+   {
+    "grader": "05-errors-as-result.md",
+    "text": "Parsing returns a Result whose error type is an enum distinguishing syntax and duplicate errors and carrying the line number, instead of error codes or out-parameters",
+    "passed": false,
+    "evidence": "The error type ParseError is a struct { kind, line } (src/lib.rs:255-258), not an enum. The enum ParseErrorKind (src/lib.rs:288) separates syntax from duplicate but doesn't carry the line."
+   },
+   {
+    "grader": "06-error-implements-error.md",
+    "text": "The error type implements std::fmt::Display and std::error::Error",
+    "passed": true,
+    "evidence": "impl fmt::Display for ParseError (src/lib.rs:274) and impl Error for ParseError (src/lib.rs:280); GetIntError also implements both (342-351)."
+   },
+   {
+    "grader": "07-option-for-absent.md",
+    "text": "Looking up a missing key returns None (Option), and integer lookup distinguishes a missing key from a non-numeric value without out-parameters",
+    "passed": true,
+    "evidence": "get returns Option<&str> (src/lib.rs:151); get_int returns Result<i64, GetIntError> with Missing vs NotANumber (src/lib.rs:167, 335-340)."
+   },
+   {
+    "grader": "08-typed-flags.md",
+    "text": "The flags bitmask is replaced by a typed options struct, builder, or bitflags type, not a raw integer",
+    "passed": true,
+    "evidence": "ParseOptions is a typed struct with const builder methods trim_values/allow_duplicates/case_insensitive (src/lib.rs:40-79)."
+   },
+   {
+    "grader": "09-behavior-preserved.md",
+    "text": "Behavior matches the C version on its edge cases: without value trimming a value keeps its leading whitespace, an out-of-range integer is rejected as not a number, case-insensitive mode treats A and a as duplicates, and allow-duplicates keeps the last value with a count of one",
+    "passed": true,
+    "evidence": "tests/config.rs:34 keeps \"  v\"; :43 overflow is NotANumber; :67-68 A/a is DuplicateKey under case_insensitive; :56-58 allow_duplicates gives len 1, value \"3\"; all pass."
+   },
+   {
+    "grader": "10-porting-notes.md",
+    "text": "PORTING.md maps the C API to the Rust API and the C tests to the Rust tests, and lists at least one deliberate difference from the C version",
+    "passed": false,
+    "evidence": "PORTING.md maps the C API (lines 12-26) and lists deliberate differences (64-85), but has no C-test-to-Rust-test mapping. It only says the tests are in tests/config.rs (line 4)."
+   },
+   {
+    "grader": "11-proportionate.md",
+    "text": "The port is proportionate: it does not reimplement the source language's string or number semantics, it adds no public API beyond the original's operations plus standard trait impls and accessors Rust callers expect (Debug, Clone, Display, Error, FromStr, Default, IntoIterator, len/is_empty), and its code lines in src/ (excluding tests, comments, and doc comments) are under one and a half times the code lines of config.c",
+    "passed": false,
+    "evidence": "Code lines are 223 vs 164 (limit 246), but it adds public API beyond the allowed set: Config::iter() (src/lib.rs:189), pub const MAX_SECTION_NAME_LEN (34), ParseErrorKind::is_syntax() (311), and five split syntax-error kinds."
+   }
+  ],
+  "codex-without": [
+   {
+    "grader": "01-builds-and-tests-pass.md",
+    "text": "The crate builds with cargo build and every test passes with cargo test",
+    "passed": true,
+    "evidence": "cargo build succeeds; cargo test: 9 unit tests in src/lib.rs and 1 doctest pass, 0 failed."
+   },
+   {
+    "grader": "02-clippy-clean.md",
+    "text": "cargo clippy --all-targets reports no warnings",
+    "passed": true,
+    "evidence": "cargo clippy --all-targets finished with no warnings."
+   },
+   {
+    "grader": "03-no-unsafe.md",
+    "text": "The crate contains no unsafe code and no raw pointers",
+    "passed": true,
+    "evidence": "No unsafe and no *const/*mut in src/lib.rs. std::os::raw::c_long is an integer alias, not a pointer."
+   },
+   {
+    "grader": "04-every-test-ported.md",
+    "text": "Every test function in test_config.c (test_basic, test_untrimmed_values_keep_whitespace, test_get_int_errors, test_duplicates, test_case_insensitive, test_syntax_errors, test_empty_input) has a corresponding Rust test covering the same assertions",
+    "passed": true,
+    "evidence": "src/lib.rs:172-251 has basic, untrimmed_values_keep_whitespace, get_int_errors, duplicates, case_insensitive, syntax_errors, empty_input, matching each C test's assertions."
+   },
+   {
+    "grader": "05-errors-as-result.md",
+    "text": "Parsing returns a Result whose error type is an enum distinguishing syntax and duplicate errors and carrying the line number, instead of error codes or out-parameters",
+    "passed": false,
+    "evidence": "ParseError is a struct with pub kind: ParseErrorKind and pub line (src/lib.rs:28-31), not an enum. The ParseErrorKind enum (21-24) carries no line number."
+   },
+   {
+    "grader": "06-error-implements-error.md",
+    "text": "The error type implements std::fmt::Display and std::error::Error",
+    "passed": true,
+    "evidence": "impl fmt::Display for ParseError (src/lib.rs:33) and impl Error for ParseError (src/lib.rs:46); IntError likewise (54-62)."
+   },
+   {
+    "grader": "07-option-for-absent.md",
+    "text": "Looking up a missing key returns None (Option), and integer lookup distinguishes a missing key from a non-numeric value without out-parameters",
+    "passed": true,
+    "evidence": "get returns Option<&str> (src/lib.rs:139); get_int returns Result<c_long, IntError> with Missing vs NotNumber (src/lib.rs:50-53,146)."
+   },
+   {
+    "grader": "08-typed-flags.md",
+    "text": "The flags bitmask is replaced by a typed options struct, builder, or bitflags type, not a raw integer",
+    "passed": false,
+    "evidence": "Flags stay as raw integers: pub const CONFIG_TRIM_VALUES: u32 = 0x1 etc. (src/lib.rs:13-17), and Config::parse(text, flags: u32) (line 78)."
+   },
+   {
+    "grader": "09-behavior-preserved.md",
+    "text": "Behavior matches the C version on its edge cases: without value trimming a value keeps its leading whitespace, an out-of-range integer is rejected as not a number, case-insensitive mode treats A and a as duplicates, and allow-duplicates keeps the last value with a count of one",
+    "passed": true,
+    "evidence": "src/lib.rs:189 keeps \"  v\"; :194-197 overflow 'd' is NotNumber; :221-224 A/a is Duplicate; :211-213 allow_duplicates gives count 1, value \"3\"; all pass."
+   },
+   {
+    "grader": "10-porting-notes.md",
+    "text": "PORTING.md maps the C API to the Rust API and the C tests to the Rust tests, and lists at least one deliberate difference from the C version",
+    "passed": false,
+    "evidence": "PORTING.md has an API mapping table (lines 8-14) and an Intentional Rust differences section (40-47), but no per-test mapping. It only says 'all seven tests ported' (line 51)."
+   },
+   {
+    "grader": "11-proportionate.md",
+    "text": "The port is proportionate: it does not reimplement the source language's string or number semantics, it adds no public API beyond the original's operations plus standard trait impls and accessors Rust callers expect (Debug, Clone, Display, Error, FromStr, Default, IntoIterator, len/is_empty), and its code lines in src/ (excluding tests, comments, and doc comments) are under one and a half times the code lines of config.c",
+    "passed": false,
+    "evidence": "Code lines are 131 vs 164 (limit 246), but it reimplements C semantics: NUL truncation of input and keys (src/lib.rs:84, 140) and a hand-rolled sign/digit check before parse (151-154)."
+   }
+  ],
+  "claude-with": [
+   {
+    "grader": "01-builds-and-tests-pass.md",
+    "text": "The crate builds with cargo build and every test passes with cargo test",
+    "passed": true,
+    "evidence": "cargo build succeeds; cargo test: 23 integration tests and 1 doctest pass, 0 failed."
+   },
+   {
+    "grader": "02-clippy-clean.md",
+    "text": "cargo clippy --all-targets reports no warnings",
+    "passed": true,
+    "evidence": "cargo clippy --all-targets finished with no warnings, even with clippy::pedantic set to warn in Cargo.toml."
+   },
+   {
+    "grader": "03-no-unsafe.md",
+    "text": "The crate contains no unsafe code and no raw pointers",
+    "passed": true,
+    "evidence": "grep for unsafe/*const/*mut finds nothing; Cargo.toml sets unsafe_code = \"forbid\"."
+   },
+   {
+    "grader": "04-every-test-ported.md",
+    "text": "Every test function in test_config.c (test_basic, test_untrimmed_values_keep_whitespace, test_get_int_errors, test_duplicates, test_case_insensitive, test_syntax_errors, test_empty_input) has a corresponding Rust test covering the same assertions",
+    "passed": true,
+    "evidence": "tests/config.rs:30-105 has test_basic through test_empty_input with the same assertions as test_config.c."
+   },
+   {
+    "grader": "05-errors-as-result.md",
+    "text": "Parsing returns a Result whose error type is an enum distinguishing syntax and duplicate errors and carrying the line number, instead of error codes or out-parameters",
+    "passed": true,
+    "evidence": "Config::parse returns Result<Self, ParseError> (src/lib.rs:62); ParseError is an enum with Syntax { line } and DuplicateKey { key, line } (src/lib.rs:172-185)."
+   },
+   {
+    "grader": "06-error-implements-error.md",
+    "text": "The error type implements std::fmt::Display and std::error::Error",
+    "passed": true,
+    "evidence": "impl fmt::Display for ParseError (src/lib.rs:197) and impl Error for ParseError (208); GetIntError also implements both, with source() (220-236)."
+   },
+   {
+    "grader": "07-option-for-absent.md",
+    "text": "Looking up a missing key returns None (Option), and integer lookup distinguishes a missing key from a non-numeric value without out-parameters",
+    "passed": true,
+    "evidence": "get returns Option<&str> (src/lib.rs:115); get_i64 returns Result<i64, GetIntError> with Missing vs NotANumber(ParseIntError) (src/lib.rs:129, 213-218)."
+   },
+   {
+    "grader": "08-typed-flags.md",
+    "text": "The flags bitmask is replaced by a typed options struct, builder, or bitflags type, not a raw integer",
+    "passed": true,
+    "evidence": "ParseOptions struct with pub bool fields trim_values, allow_duplicates, case_insensitive (src/lib.rs:31-39)."
+   },
+   {
+    "grader": "09-behavior-preserved.md",
+    "text": "Behavior matches the C version on its edge cases: without value trimming a value keeps its leading whitespace, an out-of-range integer is rejected as not a number, case-insensitive mode treats A and a as duplicates, and allow-duplicates keeps the last value with a count of one",
+    "passed": true,
+    "evidence": "tests/config.rs:48 keeps \"  v\"; :57 overflow is NotANumber; :82-83 A/a is DuplicateKey; :72-74 allow_duplicates gives len 1, value \"3\"; all pass."
+   },
+   {
+    "grader": "10-porting-notes.md",
+    "text": "PORTING.md maps the C API to the Rust API and the C tests to the Rust tests, and lists at least one deliberate difference from the C version",
+    "passed": true,
+    "evidence": "PORTING.md has an API mapping table (8-20), a test mapping table for all seven tests (27-35), and a Deliberate differences section (41-60)."
+   },
+   {
+    "grader": "11-proportionate.md",
+    "text": "The port is proportionate: it does not reimplement the source language's string or number semantics, it adds no public API beyond the original's operations plus standard trait impls and accessors Rust callers expect (Debug, Clone, Display, Error, FromStr, Default, IntoIterator, len/is_empty), and its code lines in src/ (excluding tests, comments, and doc comments) are under one and a half times the code lines of config.c",
+    "passed": true,
+    "evidence": "Code lines are 154 vs 164 in config.c (limit 246). It uses std trim_ascii and str::parse rather than emulating C, and the public API is parse/get/get_i64/len/is_empty plus FromStr, Default, Display, Error and a ParseError::line() accessor."
+   }
+  ]
+ },
+ "port-python-task-graph": {
+  "claude-without": [
+   {
+    "grader": "01-builds-and-tests-pass.md",
+    "text": "The crate builds with cargo build and every test passes with cargo test",
+    "passed": true,
+    "evidence": "cargo build succeeded; cargo test: 4 pystr unit tests, 24 integration tests, 1 doctest, all ok."
+   },
+   {
+    "grader": "02-clippy-clean.md",
+    "text": "cargo clippy --all-targets reports no warnings",
+    "passed": true,
+    "evidence": "cargo clippy --all-targets checked taskgraph and finished with no warnings."
+   },
+   {
+    "grader": "03-every-test-ported.md",
+    "text": "Every test method in test_taskgraph.py has a Rust counterpart, and all six subTest cases in test_parse_errors_report_line are checked, including their line numbers",
+    "passed": true,
+    "evidence": "tests/taskgraph.rs has all nine Python test names (test_parses_fields ... test_counts_every_kind_in_order); test_parse_errors_report_line (lines 59-72) checks all six inputs and asserts parse_err(text).line_no == line."
+   },
+   {
+    "grader": "04-exceptions-as-error-enum.md",
+    "text": "The exception classes become an error enum (or equivalent) whose variants carry the same data: the line number for parse errors, the task and dependency for a missing dependency, and the cycle path for a cycle",
+    "passed": true,
+    "evidence": "src/lib.rs:516-520 ParseError{line_no, reason}; lib.rs:570-581 OrderError::MissingDependency{task, dep} and OrderError::Cycle(Vec<String>); lib.rs:598 TaskError enum wraps both, with From impls."
+   },
+   {
+    "grader": "05-kind-is-enum.md",
+    "text": "The task kind is a Rust enum with parsing from text, not a String compared against literals",
+    "passed": true,
+    "evidence": "src/lib.rs:39 pub enum Kind {Build, Test, Deploy} with impl FromStr (lib.rs:68-78); Task.kind is Kind."
+   },
+   {
+    "grader": "06-priority-is-option.md",
+    "text": "Priority is an Option of an integer type, not a sentinel value",
+    "passed": true,
+    "evidence": "src/lib.rs:103 pub priority: Option<i64>."
+   },
+   {
+    "grader": "07-definition-order-preserved.md",
+    "text": "The parsed tasks preserve definition order (the parses_fields test checks the name order), using a Vec or an ordered map rather than relying on HashMap iteration",
+    "passed": true,
+    "evidence": "TaskSet stores tasks: Vec<Task> plus a HashMap name->index (lib.rs:138-141); names() iterates the Vec; test_parses_fields checks the name order."
+   },
+   {
+    "grader": "08-order-and-cycle-match.md",
+    "text": "execution_order on the sample yields compile, unit, docs, lint, ship, and the cycle test yields the path a, c, b, a, matching the Python results",
+    "passed": true,
+    "evidence": "test_order_respects_deps_and_priority asserts [compile, unit, docs, lint, ship]; test_cycle_is_named asserts OrderError::Cycle([a, c, b, a]); both pass."
+   },
+   {
+    "grader": "09-summary-every-kind-in-order.md",
+    "text": "summarize returns a count for every kind, including zero counts, in the fixed order build, test, deploy",
+    "passed": true,
+    "evidence": "Summary holds counts: [usize; 3] and iter() yields Kind::ALL order (lib.rs:490-503); test_counts_every_kind_in_order checks (Build,2),(Test,2),(Deploy,1) and zero counts for an empty set."
+   },
+   {
+    "grader": "10-porting-notes.md",
+    "text": "PORTING.md maps the Python API to the Rust API and the Python tests to the Rust tests, and lists at least one deliberate difference from the Python version",
+    "passed": true,
+    "evidence": "PORTING.md has a Python->Rust API table, says the 9 Python tests are ported under the same names (and explains test_errors_share_a_base_class), and has a Differences section (i64 priorities, Unicode version, O((n+e) log n))."
+   },
+   {
+    "grader": "11-proportionate.md",
+    "text": "The port is proportionate: it does not reimplement the source language's string or number semantics, it adds no public API beyond the original's operations plus standard trait impls and accessors Rust callers expect (Debug, Clone, Display, Error, FromStr, Default, IntoIterator, len/is_empty), and its code lines in src/ (excluding tests, comments, and doc comments) are under three and a half times the code lines of taskgraph.py",
+    "passed": false,
+    "evidence": "src/pystr.rs reimplements Python's splitlines, strip, isalnum, int() and repr(), and lib.rs adds public API beyond the original (Task::with_deps/with_priority, TaskSet::insert/names/contains, FromIterator, Summary::count, Index<Kind>). src/ has 593 code lines (lib.rs 438 + pystr.rs 155, not counting its test module) against 89 in taskgraph.py, so the limit is 311.5."
+   }
+  ],
+  "claude-with": [
+   {
+    "grader": "01-builds-and-tests-pass.md",
+    "text": "The crate builds with cargo build and every test passes with cargo test",
+    "passed": true,
+    "evidence": "cargo build succeeded; cargo test: 18 integration tests and 1 doctest, all ok."
+   },
+   {
+    "grader": "02-clippy-clean.md",
+    "text": "cargo clippy --all-targets reports no warnings",
+    "passed": true,
+    "evidence": "cargo clippy --all-targets (with clippy::pedantic warn in Cargo.toml) finished with no warnings."
+   },
+   {
+    "grader": "03-every-test-ported.md",
+    "text": "Every test method in test_taskgraph.py has a Rust counterpart, and all six subTest cases in test_parse_errors_report_line are checked, including their line numbers",
+    "passed": true,
+    "evidence": "tests/taskgraph.rs has one test for each of the nine Python tests, each tagged with a comment naming it; parse_errors_report_line (lines 47-63) checks all six inputs and asserts err.line() == line."
+   },
+   {
+    "grader": "04-exceptions-as-error-enum.md",
+    "text": "The exception classes become an error enum (or equivalent) whose variants carry the same data: the line number for parse errors, the task and dependency for a missing dependency, and the cycle path for a cycle",
+    "passed": true,
+    "evidence": "src/lib.rs:362-365 ParseError{line, kind} with a line() accessor; lib.rs:409-422 OrderError::MissingDependency{task, dep} and Cycle{cycle: Vec<String>}; lib.rs:443 TaskError enum with From for both."
+   },
+   {
+    "grader": "05-kind-is-enum.md",
+    "text": "The task kind is a Rust enum with parsing from text, not a String compared against literals",
+    "passed": true,
+    "evidence": "src/lib.rs:43 pub enum Kind with impl FromStr (lib.rs:71-82); parse_line calls rest.trim().parse() (lib.rs:275)."
+   },
+   {
+    "grader": "06-priority-is-option.md",
+    "text": "Priority is an Option of an integer type, not a sentinel value",
+    "passed": true,
+    "evidence": "src/lib.rs:104 priority: Option<i64>, returned by priority() -> Option<i64>."
+   },
+   {
+    "grader": "07-definition-order-preserved.md",
+    "text": "The parsed tasks preserve definition order (the parses_fields test checks the name order), using a Vec or an ordered map rather than relying on HashMap iteration",
+    "passed": true,
+    "evidence": "TaskGraph stores tasks: Vec<Task> plus a HashMap index (lib.rs:140-143); iter() walks the Vec; parses_fields asserts the name order."
+   },
+   {
+    "grader": "08-order-and-cycle-match.md",
+    "text": "execution_order on the sample yields compile, unit, docs, lint, ship, and the cycle test yields the path a, c, b, a, matching the Python results",
+    "passed": true,
+    "evidence": "order_respects_deps_and_priority asserts [compile, unit, docs, lint, ship]; cycle_is_named asserts cycle == [a, c, b, a]; both pass."
+   },
+   {
+    "grader": "09-summary-every-kind-in-order.md",
+    "text": "summarize returns a count for every kind, including zero counts, in the fixed order build, test, deploy",
+    "passed": true,
+    "evidence": "summarize prefills a BTreeMap<Kind, usize> with every Kind::ALL entry at 0 (lib.rs:228-234), and Kind's derived Ord follows Build, Test, Deploy; the test checks the ordered pairs and the all-zero map."
+   },
+   {
+    "grader": "10-porting-notes.md",
+    "text": "PORTING.md maps the Python API to the Rust API and the Python tests to the Rust tests, and lists at least one deliberate difference from the Python version",
+    "passed": true,
+    "evidence": "PORTING.md has an API mapping table, a test mapping table covering all nine tests, and a Deliberate differences section (i64 priorities, str::lines, quoting, among others)."
+   },
+   {
+    "grader": "11-proportionate.md",
+    "text": "The port is proportionate: it does not reimplement the source language's string or number semantics, it adds no public API beyond the original's operations plus standard trait impls and accessors Rust callers expect (Debug, Clone, Display, Error, FromStr, Default, IntoIterator, len/is_empty), and its code lines in src/ (excluding tests, comments, and doc comments) are under three and a half times the code lines of taskgraph.py",
+    "passed": false,
+    "evidence": "No Python string/number semantics are reimplemented and the extra API is accessors and trait impls, but src/lib.rs has 327 code lines against 89 in taskgraph.py, over the 311.5 limit (3.5 x 89). PORTING.md's own figure of 96 Python lines appears to count docstrings."
+   }
+  ],
+  "codex-without": [
+   {
+    "grader": "01-builds-and-tests-pass.md",
+    "text": "The crate builds with cargo build and every test passes with cargo test",
+    "passed": true,
+    "evidence": "cargo build succeeded (deps indexmap, num-bigint, unicode-general-category); cargo test: 15 integration tests, all ok."
+   },
+   {
+    "grader": "02-clippy-clean.md",
+    "text": "cargo clippy --all-targets reports no warnings",
+    "passed": true,
+    "evidence": "cargo clippy --all-targets checked taskgraph and finished with no warnings."
+   },
+   {
+    "grader": "03-every-test-ported.md",
+    "text": "Every test method in test_taskgraph.py has a Rust counterpart, and all six subTest cases in test_parse_errors_report_line are checked, including their line numbers",
+    "passed": true,
+    "evidence": "tests/taskgraph.rs has a counterpart for all nine Python tests (test_ prefix dropped); parse_errors_report_line (lines 22-45) checks all six inputs and asserts TaskError::ParseError{line_no: expected_line, message}."
+   },
+   {
+    "grader": "04-exceptions-as-error-enum.md",
+    "text": "The exception classes become an error enum (or equivalent) whose variants carry the same data: the line number for parse errors, the task and dependency for a missing dependency, and the cycle path for a cycle",
+    "passed": true,
+    "evidence": "src/lib.rs:41-45 TaskError enum: ParseError{line_no, message}, MissingDependency{task, dep}, CycleError{cycle: Vec<String>}."
+   },
+   {
+    "grader": "05-kind-is-enum.md",
+    "text": "The task kind is a Rust enum with parsing from text, not a String compared against literals",
+    "passed": true,
+    "evidence": "src/lib.rs:14 pub enum Kind {Build, Test, Deploy}; parse_tasks turns the text into the enum with a match (lib.rs:205-210), and Task.kind is Kind, not a String. There is no FromStr impl, but the text is parsed into the enum."
+   },
+   {
+    "grader": "06-priority-is-option.md",
+    "text": "Priority is an Option of an integer type, not a sentinel value",
+    "passed": true,
+    "evidence": "src/lib.rs:38 priority: Option<BigInt>, an Option of an arbitrary-precision integer type with no sentinel."
+   },
+   {
+    "grader": "07-definition-order-preserved.md",
+    "text": "The parsed tasks preserve definition order (the parses_fields test checks the name order), using a Vec or an ordered map rather than relying on HashMap iteration",
+    "passed": true,
+    "evidence": "Tasks = IndexMap<String, Task> (lib.rs:11); parses_fields asserts that keys() keep definition order."
+   },
+   {
+    "grader": "08-order-and-cycle-match.md",
+    "text": "execution_order on the sample yields compile, unit, docs, lint, ship, and the cycle test yields the path a, c, b, a, matching the Python results",
+    "passed": true,
+    "evidence": "order_respects_deps_and_priority asserts [compile, unit, docs, lint, ship]; cycle_is_named asserts CycleError{cycle: [a, c, b, a]}; both pass."
+   },
+   {
+    "grader": "09-summary-every-kind-in-order.md",
+    "text": "summarize returns a count for every kind, including zero counts, in the fixed order build, test, deploy",
+    "passed": true,
+    "evidence": "summarize returns an IndexMap prefilled with KINDS (build, test, deploy) at 0 (lib.rs:283-289); the test checks the ordered pairs and the all-zero result for empty input."
+   },
+   {
+    "grader": "10-porting-notes.md",
+    "text": "PORTING.md maps the Python API to the Rust API and the Python tests to the Rust tests, and lists at least one deliberate difference from the Python version",
+    "passed": false,
+    "evidence": "PORTING.md maps the API and lists differences (Debug replaces repr, Unicode database, no int length limit), but it only says it 'ports all nine tests'. It never maps which Python test corresponds to which Rust test."
+   },
+   {
+    "grader": "11-proportionate.md",
+    "text": "The port is proportionate: it does not reimplement the source language's string or number semantics, it adds no public API beyond the original's operations plus standard trait impls and accessors Rust callers expect (Debug, Clone, Display, Error, FromStr, Default, IntoIterator, len/is_empty), and its code lines in src/ (excluding tests, comments, and doc comments) are under three and a half times the code lines of taskgraph.py",
+    "passed": false,
+    "evidence": "src/lib.rs reimplements Python semantics: strip with \\x1c-\\x1f (58-63), isalnum by general category (64-76), repr (77-119), int() with underscores and Unicode digits into BigInt (120-152), and splitlines boundaries (158-170). This is despite 277 code lines being under the 311.5 limit."
+   }
+  ],
+  "codex-with": [
+   {
+    "grader": "01-builds-and-tests-pass.md",
+    "text": "The crate builds with cargo build and every test passes with cargo test",
+    "passed": true,
+    "evidence": "cargo build succeeded; cargo test: 14 integration tests and 1 doctest, all ok."
+   },
+   {
+    "grader": "02-clippy-clean.md",
+    "text": "cargo clippy --all-targets reports no warnings",
+    "passed": true,
+    "evidence": "cargo clippy --all-targets checked taskgraph and finished with no warnings."
+   },
+   {
+    "grader": "03-every-test-ported.md",
+    "text": "Every test method in test_taskgraph.py has a Rust counterpart, and all six subTest cases in test_parse_errors_report_line are checked, including their line numbers",
+    "passed": true,
+    "evidence": "tests/taskgraph.rs has all nine Python test names; test_parse_errors_report_line (lines 26-41) checks all six inputs and matches Err(TaskError::Parse{line_no, ..}) where line_no == expected."
+   },
+   {
+    "grader": "04-exceptions-as-error-enum.md",
+    "text": "The exception classes become an error enum (or equivalent) whose variants carry the same data: the line number for parse errors, the task and dependency for a missing dependency, and the cycle path for a cycle",
+    "passed": true,
+    "evidence": "src/lib.rs:93-113 TaskError enum: Parse{line_no, message}, MissingDependency{task, dep}, Cycle{cycle: Vec<String>}."
+   },
+   {
+    "grader": "05-kind-is-enum.md",
+    "text": "The task kind is a Rust enum with parsing from text, not a String compared against literals",
+    "passed": true,
+    "evidence": "src/lib.rs:17 pub enum Kind with impl FromStr (lib.rs:50-61); parse_tasks calls rest.trim().parse() (lib.rs:187-190)."
+   },
+   {
+    "grader": "06-priority-is-option.md",
+    "text": "Priority is an Option of an integer type, not a sentinel value",
+    "passed": true,
+    "evidence": "src/lib.rs:74 pub priority: Option<i64>."
+   },
+   {
+    "grader": "07-definition-order-preserved.md",
+    "text": "The parsed tasks preserve definition order (the parses_fields test checks the name order), using a Vec or an ordered map rather than relying on HashMap iteration",
+    "passed": true,
+    "evidence": "parse_tasks returns Vec<Task> (lib.rs:136), pushed in definition order; test_parses_fields asserts the name order."
+   },
+   {
+    "grader": "08-order-and-cycle-match.md",
+    "text": "execution_order on the sample yields compile, unit, docs, lint, ship, and the cycle test yields the path a, c, b, a, matching the Python results",
+    "passed": true,
+    "evidence": "test_order_respects_deps_and_priority asserts [compile, unit, docs, lint, ship]; test_cycle_is_named asserts Err(TaskError::Cycle{cycle: [a, c, b, a]}); both pass."
+   },
+   {
+    "grader": "09-summary-every-kind-in-order.md",
+    "text": "summarize returns a count for every kind, including zero counts, in the fixed order build, test, deploy",
+    "passed": true,
+    "evidence": "summarize returns [(Kind, usize); 3] built from KINDS (lib.rs:281-283); the test checks [(Build,2),(Test,2),(Deploy,1)] and all-zero counts for an empty slice."
+   },
+   {
+    "grader": "10-porting-notes.md",
+    "text": "PORTING.md maps the Python API to the Rust API and the Python tests to the Rust tests, and lists at least one deliberate difference from the Python version",
+    "passed": true,
+    "evidence": "PORTING.md has an API mapping table, a test mapping table naming all nine tests by class, and a Deliberate differences section (i64 priorities, Rust lines/trim, Debug quoting)."
+   },
+   {
+    "grader": "11-proportionate.md",
+    "text": "The port is proportionate: it does not reimplement the source language's string or number semantics, it adds no public API beyond the original's operations plus standard trait impls and accessors Rust callers expect (Debug, Clone, Display, Error, FromStr, Default, IntoIterator, len/is_empty), and its code lines in src/ (excluding tests, comments, and doc comments) are under three and a half times the code lines of taskgraph.py",
+    "passed": true,
+    "evidence": "Plain std lines/trim/parse::<i64> with no Python-semantics shims and no dependencies. Public API is Kind (FromStr, Display), KINDS, ParseKindError, Task plus Task::new (the original constructor), TaskError, parse_tasks, execution_order and summarize. src/lib.rs has 220 code lines against 89 in taskgraph.py, under the 311.5 limit."
+   }
+  ]
+ },
+ "refactor-inventory-module": {
+  "claude-with": [
+   {
+    "grader": "01-deny-warnings-removed.md",
+    "text": "#![deny(warnings)] is removed from inventory.rs",
+    "passed": true,
+    "evidence": "inventory.rs:1-11 begins with module docs and use lines; no #![deny(warnings)] anywhere (grep finds none)."
+   },
+   {
+    "grader": "02-no-rc-refcell-in-api.md",
+    "text": "Inventory::new returns Inventory (or Self), and no Rc<RefCell<..>> appears in any public signature",
+    "passed": true,
+    "evidence": "inventory.rs:106 `pub fn new() -> Self`; Inventory holds a plain BTreeMap (line 100) and load returns Result<Self, _> (line 119); no Rc or RefCell in the file."
+   },
+   {
+    "grader": "03-borrowed-param-types.md",
+    "text": "Parameters that were &String or &Vec<String> now take &str, &[String], impl AsRef<str>/AsRef<Path>, or an iterator",
+    "passed": true,
+    "evidence": "get(&self, name: &str) line 126, restock(&mut self, name: &str, ..) line 133, total_value takes I: IntoIterator, I::Item: AsRef<str> (lines 150-153), load takes impl AsRef<Path> (line 119)."
+   },
+   {
+    "grader": "04-error-implements-error.md",
+    "text": "InventoryError implements std::fmt::Display and std::error::Error",
+    "passed": true,
+    "evidence": "impl fmt::Display for InventoryError at lines 30-41 and `impl Error for InventoryError {}` at line 43."
+   },
+   {
+    "grader": "05-no-unwrap-on-fallible-paths.md",
+    "text": "No unwrap() remains on the file read in load, the numeric parses in parse_line, or the map lookups in total_value and restock; each returns an error or Option instead",
+    "passed": true,
+    "evidence": "load maps the read error to Io (line 120), parses use map_err(|_| Parse)? (lines 78-79), total_value and restock use ok_or(NotFound)? (lines 134, 156); no unwrap outside tests."
+   },
+   {
+    "grader": "06-getter-renamed.md",
+    "text": "The get_item getter loses its get_ prefix and/or returns Option<&Item> instead of a clone",
+    "passed": true,
+    "evidence": "get_item renamed to `get(&self, name: &str) -> Option<&Item>` (lines 126-128), no clone."
+   },
+   {
+    "grader": "07-bool-param-replaced.md",
+    "text": "The bool parameter on report is replaced by an enum or by separate methods",
+    "passed": true,
+    "evidence": "report takes `verbosity: Verbosity` (line 168), enum Verbosity { Summary, Full } at lines 87-93."
+   },
+   {
+    "grader": "08-deterministic-report.md",
+    "text": "report output is deterministic: keys are sorted or stored in a BTreeMap",
+    "passed": true,
+    "evidence": "items is a BTreeMap<String, Item> (line 100), so report iterates in sorted name order; test report_is_sorted_by_name passes (cargo test: 12 passed)."
+   },
+   {
+    "grader": "09-format-over-concat.md",
+    "text": "String building uses format!, write!, or push_str instead of + concatenation",
+    "passed": true,
+    "evidence": "report uses writeln! (lines 173-180); no `+` string concatenation remains."
+   },
+   {
+    "grader": "10-no-check-then-unwrap.md",
+    "text": "is_some() followed by unwrap() patterns are replaced by if let, match, or combinators",
+    "passed": true,
+    "evidence": "get returns self.items.get(name) directly and restock uses get_mut(..).ok_or(..)? (line 134); no is_some() in the file."
+   },
+   {
+    "grader": "11-changes-listed-with-reasons.md",
+    "text": "CHANGES.md lists each change with a one-line reason",
+    "passed": true,
+    "evidence": "CHANGES.md items 1-12 each name a change and give its reason (e.g. item 10: deny(warnings) breaks builds on new toolchains; item 8: HashMap order was random)."
+   },
+   {
+    "grader": "12-signature-changes-called-out.md",
+    "text": "CHANGES.md calls out every public signature change (renamed, removed, or re-typed items) with before and after, and names behavior deliberately left unchanged",
+    "passed": true,
+    "evidence": "CHANGES.md 'Signature changes' table (lines 56-66) gives before/after for new, get_item, add_item, total_value, restock, parse_line, load, report and the error enum; 'Quirks kept on purpose' (lines 68-80) names behavior left unchanged."
+   }
+  ],
+  "codex-without": [
+   {
+    "grader": "01-deny-warnings-removed.md",
+    "text": "#![deny(warnings)] is removed from inventory.rs",
+    "passed": false,
+    "evidence": "inventory.rs:1 still reads `#![deny(warnings)]`."
+   },
+   {
+    "grader": "02-no-rc-refcell-in-api.md",
+    "text": "Inventory::new returns Inventory (or Self), and no Rc<RefCell<..>> appears in any public signature",
+    "passed": false,
+    "evidence": "inventory.rs:29 `pub fn new() -> Rc<RefCell<Inventory>>` and load (line 92) still returns Rc<RefCell<Inventory>>."
+   },
+   {
+    "grader": "03-borrowed-param-types.md",
+    "text": "Parameters that were &String or &Vec<String> now take &str, &[String], impl AsRef<str>/AsRef<Path>, or an iterator",
+    "passed": false,
+    "evidence": "get_item(&self, name: &String) line 35, total_value(&self, names: &Vec<String>) line 59, restock/parse_line/load still take &String (lines 69, 76, 92); clippy flags ptr_arg."
+   },
+   {
+    "grader": "04-error-implements-error.md",
+    "text": "InventoryError implements std::fmt::Display and std::error::Error",
+    "passed": false,
+    "evidence": "InventoryError (lines 7-14) only derives Debug, Clone; no Display or Error impl."
+   },
+   {
+    "grader": "05-no-unwrap-on-fallible-paths.md",
+    "text": "No unwrap() remains on the file read in load, the numeric parses in parse_line, or the map lookups in total_value and restock; each returns an error or Option instead",
+    "passed": false,
+    "evidence": "unwrap remains on map lookup in total_value (line 63), on both parses (lines 81-82) and on the file read in load (line 93); only restock was fixed."
+   },
+   {
+    "grader": "06-getter-renamed.md",
+    "text": "The get_item getter loses its get_ prefix and/or returns Option<&Item> instead of a clone",
+    "passed": false,
+    "evidence": "inventory.rs:35 `pub fn get_item(&self, name: &String) -> Option<Item>` keeps the get_ prefix and still returns a clone."
+   },
+   {
+    "grader": "07-bool-param-replaced.md",
+    "text": "The bool parameter on report is replaced by an enum or by separate methods",
+    "passed": false,
+    "evidence": "inventory.rs:108 `pub fn report(&self, verbose: bool) -> String` keeps the bool."
+   },
+   {
+    "grader": "08-deterministic-report.md",
+    "text": "report output is deterministic: keys are sorted or stored in a BTreeMap",
+    "passed": false,
+    "evidence": "items is still a HashMap (line 25) iterated directly in report (line 110); CHANGES.md line 7 says unordered iteration is preserved."
+   },
+   {
+    "grader": "09-format-over-concat.md",
+    "text": "String building uses format!, write!, or push_str instead of + concatenation",
+    "passed": true,
+    "evidence": "report uses writeln! (lines 111-118); no `+` concatenation remains."
+   },
+   {
+    "grader": "10-no-check-then-unwrap.md",
+    "text": "is_some() followed by unwrap() patterns are replaced by if let, match, or combinators",
+    "passed": true,
+    "evidence": "get_item uses .get(name).cloned() (line 36) and restock uses get_mut(..).ok_or(..)? (line 71); no is_some() remains."
+   },
+   {
+    "grader": "11-changes-listed-with-reasons.md",
+    "text": "CHANGES.md lists each change with a one-line reason",
+    "passed": true,
+    "evidence": "Each CHANGES.md bullet (lines 3-8) names a change with a short reason (e.g. 'avoiding repeated lookups, item cloning, and reinsertion')."
+   },
+   {
+    "grader": "12-signature-changes-called-out.md",
+    "text": "CHANGES.md calls out every public signature change (renamed, removed, or re-typed items) with before and after, and names behavior deliberately left unchanged",
+    "passed": true,
+    "evidence": "No public signature changed (diff vs original shows only bodies and the private items field), and CHANGES.md line 8 states all public signatures were kept and lists the behaviors deliberately preserved."
+   }
+  ],
+  "claude-without": [
+   {
+    "grader": "01-deny-warnings-removed.md",
+    "text": "#![deny(warnings)] is removed from inventory.rs",
+    "passed": true,
+    "evidence": "No #![deny(warnings)] in inventory.rs; file starts with module docs (lines 1-10)."
+   },
+   {
+    "grader": "02-no-rc-refcell-in-api.md",
+    "text": "Inventory::new returns Inventory (or Self), and no Rc<RefCell<..>> appears in any public signature",
+    "passed": true,
+    "evidence": "inventory.rs:141 `pub fn new() -> Self`, load returns Result<Self, _> (line 152); Inventory holds a plain BTreeMap and no Rc/RefCell appears."
+   },
+   {
+    "grader": "03-borrowed-param-types.md",
+    "text": "Parameters that were &String or &Vec<String> now take &str, &[String], impl AsRef<str>/AsRef<Path>, or an iterator",
+    "passed": true,
+    "evidence": "get_item(&self, name: &str) line 158, restock(&mut self, name: &str, ..) line 193, total_value takes IntoIterator with AsRef<str> items (lines 213-217), load takes impl AsRef<Path> (line 152)."
+   },
+   {
+    "grader": "04-error-implements-error.md",
+    "text": "InventoryError implements std::fmt::Display and std::error::Error",
+    "passed": true,
+    "evidence": "impl fmt::Display for InventoryError at lines 35-48 and impl error::Error with source() at lines 50-58."
+   },
+   {
+    "grader": "05-no-unwrap-on-fallible-paths.md",
+    "text": "No unwrap() remains on the file read in load, the numeric parses in parse_line, or the map lookups in total_value and restock; each returns an error or Option instead",
+    "passed": true,
+    "evidence": "load uses `fs::read_to_string(path)?` with From<io::Error> (lines 60-64, 153), parses use map_err(..)? (lines 124-125), restock and total_value use ok_or_else(NotFound)? (lines 197, 222)."
+   },
+   {
+    "grader": "06-getter-renamed.md",
+    "text": "The get_item getter loses its get_ prefix and/or returns Option<&Item> instead of a clone",
+    "passed": true,
+    "evidence": "get_item keeps its name but now returns Option<&Item> with no clone (lines 158-160), which the assertion's 'and/or' allows."
+   },
+   {
+    "grader": "07-bool-param-replaced.md",
+    "text": "The bool parameter on report is replaced by an enum or by separate methods",
+    "passed": false,
+    "evidence": "inventory.rs:232 `pub fn report(&self, verbose: bool) -> String` still takes a bool."
+   },
+   {
+    "grader": "08-deterministic-report.md",
+    "text": "report output is deterministic: keys are sorted or stored in a BTreeMap",
+    "passed": true,
+    "evidence": "items is a BTreeMap (line 135); report iterates values in key order; test report_format checks sorted output (cargo test: 13 passed)."
+   },
+   {
+    "grader": "09-format-over-concat.md",
+    "text": "String building uses format!, write!, or push_str instead of + concatenation",
+    "passed": true,
+    "evidence": "report builds output with writeln! (lines 236-242); no `+` concatenation."
+   },
+   {
+    "grader": "10-no-check-then-unwrap.md",
+    "text": "is_some() followed by unwrap() patterns are replaced by if let, match, or combinators",
+    "passed": true,
+    "evidence": "No is_some() remains; get_item returns items.get(name) and restock uses get_mut(..).ok_or_else(..)? (lines 194-197)."
+   },
+   {
+    "grader": "11-changes-listed-with-reasons.md",
+    "text": "CHANGES.md lists each change with a one-line reason",
+    "passed": true,
+    "evidence": "CHANGES.md items 1-13 each state a change with its reason (e.g. item 3: HashMap order made output impossible to test; item 10: deny(warnings) breaks toolchain upgrades)."
+   },
+   {
+    "grader": "12-signature-changes-called-out.md",
+    "text": "CHANGES.md calls out every public signature change (renamed, removed, or re-typed items) with before and after, and names behavior deliberately left unchanged",
+    "passed": false,
+    "evidence": "'Call-site changes' (lines 73-82) mostly gives only the after form and omits add_item, whose signature changed from (&self, name: String, ..) to (&mut self, name: impl Into<String>, ..) (inventory.rs:168-174) with no mention of Into anywhere in CHANGES.md; behavior kept as-is is named (lines 84-91)."
+   }
+  ],
+  "codex-with": [
+   {
+    "grader": "01-deny-warnings-removed.md",
+    "text": "#![deny(warnings)] is removed from inventory.rs",
+    "passed": true,
+    "evidence": "No #![deny(warnings)] in inventory.rs; file starts with `//! Inventory storage...` and use lines (lines 1-8)."
+   },
+   {
+    "grader": "02-no-rc-refcell-in-api.md",
+    "text": "Inventory::new returns Inventory (or Self), and no Rc<RefCell<..>> appears in any public signature",
+    "passed": false,
+    "evidence": "inventory.rs:60 `pub fn new() -> Rc<RefCell<Inventory>>` and load (line 161) still returns Rc<RefCell<Inventory>>."
+   },
+   {
+    "grader": "03-borrowed-param-types.md",
+    "text": "Parameters that were &String or &Vec<String> now take &str, &[String], impl AsRef<str>/AsRef<Path>, or an iterator",
+    "passed": true,
+    "evidence": "get_item, restock, parse_line and load take &str (lines 65, 117, 133, 161) and total_value takes &[String] (line 97)."
+   },
+   {
+    "grader": "04-error-implements-error.md",
+    "text": "InventoryError implements std::fmt::Display and std::error::Error",
+    "passed": true,
+    "evidence": "impl fmt::Display for InventoryError at lines 25-35 and `impl Error for InventoryError {}` at line 37."
+   },
+   {
+    "grader": "05-no-unwrap-on-fallible-paths.md",
+    "text": "No unwrap() remains on the file read in load, the numeric parses in parse_line, or the map lookups in total_value and restock; each returns an error or Option instead",
+    "passed": false,
+    "evidence": "The fallible paths still panic instead of returning errors: load uses unwrap_or_else(|e| panic!(..)) on read_to_string (lines 162-163), parse_line does the same on both parses (lines 138-145), total_value panics on a missing name (line 104)."
+   },
+   {
+    "grader": "06-getter-renamed.md",
+    "text": "The get_item getter loses its get_ prefix and/or returns Option<&Item> instead of a clone",
+    "passed": false,
+    "evidence": "inventory.rs:65 `pub fn get_item(&self, name: &str) -> Option<Item>` keeps the get_ prefix and still returns a clone."
+   },
+   {
+    "grader": "07-bool-param-replaced.md",
+    "text": "The bool parameter on report is replaced by an enum or by separate methods",
+    "passed": false,
+    "evidence": "inventory.rs:173 `pub fn report(&self, verbose: bool) -> String` keeps the bool."
+   },
+   {
+    "grader": "08-deterministic-report.md",
+    "text": "report output is deterministic: keys are sorted or stored in a BTreeMap",
+    "passed": false,
+    "evidence": "items is still a HashMap (line 55) iterated directly in report (line 175); doc comment at line 172 says 'unspecified hash map order'."
+   },
+   {
+    "grader": "09-format-over-concat.md",
+    "text": "String building uses format!, write!, or push_str instead of + concatenation",
+    "passed": true,
+    "evidence": "report uses writeln! (lines 176-183); no `+` concatenation remains."
+   },
+   {
+    "grader": "10-no-check-then-unwrap.md",
+    "text": "is_some() followed by unwrap() patterns are replaced by if let, match, or combinators",
+    "passed": true,
+    "evidence": "No is_some() remains; get_item uses .get(name).cloned() (line 66) and restock uses get_mut(..).ok_or(..)? (line 119)."
+   },
+   {
+    "grader": "11-changes-listed-with-reasons.md",
+    "text": "CHANGES.md lists each change with a one-line reason",
+    "passed": false,
+    "evidence": "Several CHANGES.md bullets give no reason: line 7 says deny(warnings) was removed without saying why, and line 8 ('Documented public APIs and added five behavior tests') has none either."
+   },
+   {
+    "grader": "12-signature-changes-called-out.md",
+    "text": "CHANGES.md calls out every public signature change (renamed, removed, or re-typed items) with before and after, and names behavior deliberately left unchanged",
+    "passed": true,
+    "evidence": "CHANGES.md line 5 gives before/after for every re-typed parameter (&String -> &str, &Vec<String> -> &[String]); nothing was renamed or removed; line 10 lists the behaviors and signatures deliberately kept."
+   }
+  ]
+ },
+ "review-bevy-arena": {
+  "codex-without": [
+   {
+    "grader": "01-flags-query-conflict.md",
+    "text": "REVIEW.md flags that apply_hits has two queries that both take &mut Health (With<Player> and With<Enemy>), which Bevy rejects as conflicting access (error B0001), so ArenaPlugin panics when the system is first run; ranks it as a must-fix; and fixes it with Without filters that make the queries disjoint or with a ParamSet",
+    "passed": true,
+    "evidence": "REVIEW.md:5-11 ranks it [P1], cites lib.rs:133-134, explains With<Player>/With<Enemy> are not disjoint, B0001 panic on first update, and offers Without filters or ParamSet as fixes."
+   },
+   {
+    "grader": "02-flags-deferred-wave-ordering.md",
+    "text": "REVIEW.md flags that spawn_wave and check_wave_cleared have no ordering between them, and that because spawn_wave's Commands are deferred, check_wave_cleared can run after it in the same frame, see no enemies, and start another wave (double spawns or a skipped wave number); it recommends an explicit order such as (check_wave_cleared, spawn_wave).chain() or .before/.after",
+    "passed": true,
+    "evidence": "REVIEW.md:21-29 says the wave systems lack ordering, spawn_wave's Commands are not yet applied so check_wave_cleared sees no enemies and a second batch spawns; fix at :29 prescribes an explicit order (clear detection, then spawning)."
+   },
+   {
+    "grader": "03-flags-single-unwrap.md",
+    "text": "REVIEW.md flags that player.single().unwrap() in contact_damage panics when there is no player (for example after apply_hits despawns a dead player) and recommends Single, an early return with let-else, or returning Result from the system",
+    "passed": false,
+    "evidence": "REVIEW.md:13-19 flags the single().unwrap() panic after player death, but the fix only says to 'handle the absent-player state explicitly'; it never recommends Single, let-else early return, or returning Result."
+   },
+   {
+    "grader": "04-flags-bool-parameter.md",
+    "text": "REVIEW.md flags the critical: bool parameter on damage_after_armor (or the critical field on Hit) and recommends an enum or separate functions",
+    "passed": false,
+    "evidence": "REVIEW.md never mentions the critical: bool parameter or recommends an enum; finding 6 (:47-53) covers only f32 precision in the crit math."
+   },
+   {
+    "grader": "05-keeps-system-params-by-value.md",
+    "text": "REVIEW.md does not recommend changing any system's by-value parameters (Res, ResMut, Query, Commands, MessageReader, MessageWriter) to references, and does not report them as needless pass-by-value",
+    "passed": true,
+    "evidence": "No finding asks to change Res/ResMut/Query/Commands/MessageReader/MessageWriter parameters to references."
+   },
+   {
+    "grader": "06-accepts-bevy-prelude.md",
+    "text": "REVIEW.md does not ask for use bevy::prelude::* to be replaced with explicit imports; mentioning it as the normal Bevy convention is fine",
+    "passed": true,
+    "evidence": "REVIEW.md does not mention or object to use bevy::prelude::*."
+   },
+   {
+    "grader": "07-passive-components-keep-pub-fields.md",
+    "text": "REVIEW.md does not recommend making the fields of plain-data components or resources (Health, Armor, Position, Velocity, Score, Wave, ArenaConfig) private or adding getters and setters for them",
+    "passed": true,
+    "evidence": "No recommendation to make component/resource fields private or add getters/setters."
+   },
+   {
+    "grader": "08-type-complexity-handled-as-ecs.md",
+    "text": "If REVIEW.md mentions clippy's type_complexity warning on stun_wounded's query, it recommends a crate-level allow (as Bevy's own workspace does) or a type alias, not splitting the system or wrapping the query in a custom SystemParam only to silence the lint; passes if the warning is not mentioned",
+    "passed": true,
+    "evidence": "type_complexity warning is not mentioned in REVIEW.md."
+   },
+   {
+    "grader": "09-findings-cite-locations-and-rules.md",
+    "text": "Each finding in REVIEW.md cites a file:line location (or whole file) and names the rule or source it relies on, such as Bevy's documentation or a named Rust guideline",
+    "passed": false,
+    "evidence": "Findings cite file:line locations, but none names a rule or guideline source (finding 1 only names Bevy error B0001; findings 2-6 cite no rule or source)."
+   },
+   {
+    "grader": "10-fixes-shown-as-code.md",
+    "text": "Each must-fix and should-fix finding in REVIEW.md shows the fix as a short code change, not only a prose description",
+    "passed": false,
+    "evidence": "Every fix (e.g. REVIEW.md:11, :19, :29, :37, :45, :53) is prose only; the review contains no code blocks."
+   },
+   {
+    "grader": "11-code-left-unchanged.md",
+    "text": "src/lib.rs, tests/arena.rs, and Cargo.toml are unchanged, and the only new file the run leaves behind is REVIEW.md (a target directory from running cargo is fine)",
+    "passed": true,
+    "evidence": "diff -r original run-1 shows no differences other than the added REVIEW.md; run-1.changes.txt lists no tracked changes and only REVIEW.md as new."
+   }
+  ],
+  "claude-with": [
+   {
+    "grader": "01-flags-query-conflict.md",
+    "text": "REVIEW.md flags that apply_hits has two queries that both take &mut Health (With<Player> and With<Enemy>), which Bevy rejects as conflicting access (error B0001), so ArenaPlugin panics when the system is first run; ranks it as a must-fix; and fixes it with Without filters that make the queries disjoint or with a ParamSet",
+    "passed": true,
+    "evidence": "REVIEW.md:22-33 Must fix #1 cites lib.rs:133-134, B0001 first-frame panic, and fixes with (With<Player>, Without<Enemy>) / (With<Enemy>, Without<Player>) filters in code."
+   },
+   {
+    "grader": "02-flags-deferred-wave-ordering.md",
+    "text": "REVIEW.md flags that spawn_wave and check_wave_cleared have no ordering between them, and that because spawn_wave's Commands are deferred, check_wave_cleared can run after it in the same frame, see no enemies, and start another wave (double spawns or a skipped wave number); it recommends an explicit order such as (check_wave_cleared, spawn_wave).chain() or .before/.after",
+    "passed": true,
+    "evidence": "REVIEW.md:50-67 Must fix #3 explains unordered systems and deferred Commands leading to a second wave (12 enemies, wave 2), fix `(check_wave_cleared, spawn_wave).chain()`."
+   },
+   {
+    "grader": "03-flags-single-unwrap.md",
+    "text": "REVIEW.md flags that player.single().unwrap() in contact_damage panics when there is no player (for example after apply_hits despawns a dead player) and recommends Single, an early return with let-else, or returning Result from the system",
+    "passed": true,
+    "evidence": "REVIEW.md:35-48 flags single().unwrap() panicking after apply_hits despawns the player and recommends `Single<(Entity, &Position), With<Player>>`."
+   },
+   {
+    "grader": "04-flags-bool-parameter.md",
+    "text": "REVIEW.md flags the critical: bool parameter on damage_after_armor (or the critical field on Hit) and recommends an enum or separate functions",
+    "passed": true,
+    "evidence": "REVIEW.md:144-157 flags the bool parameter (C-CUSTOM-TYPE) and suggests `pub enum HitKind { Normal, Critical }` on Hit and damage_after_armor."
+   },
+   {
+    "grader": "05-keeps-system-params-by-value.md",
+    "text": "REVIEW.md does not recommend changing any system's by-value parameters (Res, ResMut, Query, Commands, MessageReader, MessageWriter) to references, and does not report them as needless pass-by-value",
+    "passed": true,
+    "evidence": "No by-value system parameter is reported as needless pass-by-value; :203 suggests allowing needless_pass_by_value as a Bevy exception."
+   },
+   {
+    "grader": "06-accepts-bevy-prelude.md",
+    "text": "REVIEW.md does not ask for use bevy::prelude::* to be replaced with explicit imports; mentioning it as the normal Bevy convention is fine",
+    "passed": true,
+    "evidence": "REVIEW.md does not ask to replace use bevy::prelude::*."
+   },
+   {
+    "grader": "07-passive-components-keep-pub-fields.md",
+    "text": "REVIEW.md does not recommend making the fields of plain-data components or resources (Health, Armor, Position, Velocity, Score, Wave, ArenaConfig) private or adding getters and setters for them",
+    "passed": false,
+    "evidence": "REVIEW.md:161-168 (finding 8) recommends changing Health to `Health { current, max }` 'behind methods' and quotes that such a type 'keeps its fields private', i.e. making Health's fields private with accessors."
+   },
+   {
+    "grader": "08-type-complexity-handled-as-ecs.md",
+    "text": "If REVIEW.md mentions clippy's type_complexity warning on stun_wounded's query, it recommends a crate-level allow (as Bevy's own workspace does) or a type alias, not splitting the system or wrapping the query in a custom SystemParam only to silence the lint; passes if the warning is not mentioned",
+    "passed": true,
+    "evidence": "REVIEW.md:175-176 says type_complexity on stun_wounded is normal for Bevy and should be allowed in [lints] rather than restructuring the system."
+   },
+   {
+    "grader": "09-findings-cite-locations-and-rules.md",
+    "text": "Each finding in REVIEW.md cites a file:line location (or whole file) and names the rule or source it relies on, such as Bevy's documentation or a named Rust guideline",
+    "passed": true,
+    "evidence": "Every finding (1-10) has a heading with file:line (or whole file) and a **Rule:** line naming a source (Bevy digest, M-PANIC-ON-BUG, C-CUSTOM-TYPE, SKILL.md sections, clippy lints)."
+   },
+   {
+    "grader": "10-fixes-shown-as-code.md",
+    "text": "Each must-fix and should-fix finding in REVIEW.md shows the fix as a short code change, not only a prose description",
+    "passed": true,
+    "evidence": "All Must-fix (1-3) and Should-fix (4-7) findings include code blocks (:30-33, :44-48, :65-67, :80-95, :107-117, :128-139, :153-155)."
+   },
+   {
+    "grader": "11-code-left-unchanged.md",
+    "text": "src/lib.rs, tests/arena.rs, and Cargo.toml are unchanged, and the only new file the run leaves behind is REVIEW.md (a target directory from running cargo is fine)",
+    "passed": true,
+    "evidence": "diff -r original run-2 shows no differences other than the added REVIEW.md; run-2.changes.txt lists only REVIEW.md as new."
+   }
+  ],
+  "claude-without": [
+   {
+    "grader": "01-flags-query-conflict.md",
+    "text": "REVIEW.md flags that apply_hits has two queries that both take &mut Health (With<Player> and With<Enemy>), which Bevy rejects as conflicting access (error B0001), so ArenaPlugin panics when the system is first run; ranks it as a must-fix; and fixes it with Without filters that make the queries disjoint or with a ParamSet",
+    "passed": true,
+    "evidence": "REVIEW.md:16-47 'Fix first' #1 cites lib.rs:133-134 and B0001 panic on frame 1; fix is a merged single query with Without<Enemy>/Without<Player> filters offered as the other option (:46)."
+   },
+   {
+    "grader": "02-flags-deferred-wave-ordering.md",
+    "text": "REVIEW.md flags that spawn_wave and check_wave_cleared have no ordering between them, and that because spawn_wave's Commands are deferred, check_wave_cleared can run after it in the same frame, see no enemies, and start another wave (double spawns or a skipped wave number); it recommends an explicit order such as (check_wave_cleared, spawn_wave).chain() or .before/.after",
+    "passed": true,
+    "evidence": "REVIEW.md:95-116 explains no order plus deferred Commands lets check_wave_cleared see no enemies and spawn a second wave (12 enemies, wave 2); fix `(check_wave_cleared, spawn_wave).chain()`."
+   },
+   {
+    "grader": "03-flags-single-unwrap.md",
+    "text": "REVIEW.md flags that player.single().unwrap() in contact_damage panics when there is no player (for example after apply_hits despawns a dead player) and recommends Single, an early return with let-else, or returning Result from the system",
+    "passed": true,
+    "evidence": "REVIEW.md:64-79 flags the single().unwrap() panic after the player is despawned and recommends `Single<(Entity, &Position), With<Player>>` or `let Ok(..) = player.single() else { return };`."
+   },
+   {
+    "grader": "04-flags-bool-parameter.md",
+    "text": "REVIEW.md flags the critical: bool parameter on damage_after_armor (or the critical field on Hit) and recommends an enum or separate functions",
+    "passed": false,
+    "evidence": "REVIEW.md never mentions the critical: bool parameter; the crit item at :164-167 only addresses f32 precision."
+   },
+   {
+    "grader": "05-keeps-system-params-by-value.md",
+    "text": "REVIEW.md does not recommend changing any system's by-value parameters (Res, ResMut, Query, Commands, MessageReader, MessageWriter) to references, and does not report them as needless pass-by-value",
+    "passed": true,
+    "evidence": "No recommendation to change by-value system parameters to references."
+   },
+   {
+    "grader": "06-accepts-bevy-prelude.md",
+    "text": "REVIEW.md does not ask for use bevy::prelude::* to be replaced with explicit imports; mentioning it as the normal Bevy convention is fine",
+    "passed": true,
+    "evidence": "use bevy::prelude::* is not mentioned or criticized."
+   },
+   {
+    "grader": "07-passive-components-keep-pub-fields.md",
+    "text": "REVIEW.md does not recommend making the fields of plain-data components or resources (Health, Armor, Position, Velocity, Score, Wave, ArenaConfig) private or adding getters and setters for them",
+    "passed": true,
+    "evidence": "No recommendation to privatize component/resource fields or add getters; :173-175 suggests a separate MaxHealth component instead."
+   },
+   {
+    "grader": "08-type-complexity-handled-as-ecs.md",
+    "text": "If REVIEW.md mentions clippy's type_complexity warning on stun_wounded's query, it recommends a crate-level allow (as Bevy's own workspace does) or a type alias, not splitting the system or wrapping the query in a custom SystemParam only to silence the lint; passes if the warning is not mentioned",
+    "passed": true,
+    "evidence": "REVIEW.md:182 recommends a type alias (`type WoundedFilter = (...)`) for the type_complexity warning."
+   },
+   {
+    "grader": "09-findings-cite-locations-and-rules.md",
+    "text": "Each finding in REVIEW.md cites a file:line location (or whole file) and names the rule or source it relies on, such as Bevy's documentation or a named Rust guideline",
+    "passed": false,
+    "evidence": "No finding names a rule or guideline source (no Bevy docs or Rust guideline cited), and findings #7 (:131), #9 (:147), #10 (:154) give no file:line location."
+   },
+   {
+    "grader": "10-fixes-shown-as-code.md",
+    "text": "Each must-fix and should-fix finding in REVIEW.md shows the fix as a short code change, not only a prose description",
+    "passed": false,
+    "evidence": "Should-fix findings #6-#10 (:122-158) and must-fix #4 (:90-93) give prose-only fixes with no code change."
+   },
+   {
+    "grader": "11-code-left-unchanged.md",
+    "text": "src/lib.rs, tests/arena.rs, and Cargo.toml are unchanged, and the only new file the run leaves behind is REVIEW.md (a target directory from running cargo is fine)",
+    "passed": true,
+    "evidence": "diff -r original run-3 shows no differences other than the added REVIEW.md; run-3.changes.txt lists only REVIEW.md as new."
+   }
+  ],
+  "codex-with": [
+   {
+    "grader": "01-flags-query-conflict.md",
+    "text": "REVIEW.md flags that apply_hits has two queries that both take &mut Health (With<Player> and With<Enemy>), which Bevy rejects as conflicting access (error B0001), so ArenaPlugin panics when the system is first run; ranks it as a must-fix; and fixes it with Without filters that make the queries disjoint or with a ParamSet",
+    "passed": true,
+    "evidence": "REVIEW.md:7-25 Must fix #1 cites lib.rs:133-134 and B0001 panic on first update; code fix adds Without<Player> to the enemy query (disjoint), with ParamSet mentioned."
+   },
+   {
+    "grader": "02-flags-deferred-wave-ordering.md",
+    "text": "REVIEW.md flags that spawn_wave and check_wave_cleared have no ordering between them, and that because spawn_wave's Commands are deferred, check_wave_cleared can run after it in the same frame, see no enemies, and start another wave (double spawns or a skipped wave number); it recommends an explicit order such as (check_wave_cleared, spawn_wave).chain() or .before/.after",
+    "passed": true,
+    "evidence": "REVIEW.md:43-67 explains no ordering edge and deferred spawns causing a second wave; fix chains (..., check_wave_cleared, spawn_wave).chain()."
+   },
+   {
+    "grader": "03-flags-single-unwrap.md",
+    "text": "REVIEW.md flags that player.single().unwrap() in contact_damage panics when there is no player (for example after apply_hits despawns a dead player) and recommends Single, an early return with let-else, or returning Result from the system",
+    "passed": true,
+    "evidence": "REVIEW.md:27-41 flags the unwrap panic after the player is despawned; fix is `let Ok(..) = player.single() else { return; };` with Single as alternative."
+   },
+   {
+    "grader": "04-flags-bool-parameter.md",
+    "text": "REVIEW.md flags the critical: bool parameter on damage_after_armor (or the critical field on Hit) and recommends an enum or separate functions",
+    "passed": true,
+    "evidence": "REVIEW.md:152-170 flags the boolean mode on damage_after_armor and proposes `pub enum HitKind { Normal, Critical }` with code."
+   },
+   {
+    "grader": "05-keeps-system-params-by-value.md",
+    "text": "REVIEW.md does not recommend changing any system's by-value parameters (Res, ResMut, Query, Commands, MessageReader, MessageWriter) to references, and does not report them as needless pass-by-value",
+    "passed": true,
+    "evidence": "REVIEW.md:185 explicitly says Bevy's by-value system parameters are valid conventions, not defects."
+   },
+   {
+    "grader": "06-accepts-bevy-prelude.md",
+    "text": "REVIEW.md does not ask for use bevy::prelude::* to be replaced with explicit imports; mentioning it as the normal Bevy convention is fine",
+    "passed": true,
+    "evidence": "REVIEW.md:173 says use of bevy::prelude::* is appropriate and needs no import rewrite."
+   },
+   {
+    "grader": "07-passive-components-keep-pub-fields.md",
+    "text": "REVIEW.md does not recommend making the fields of plain-data components or resources (Health, Armor, Position, Velocity, Score, Wave, ArenaConfig) private or adding getters and setters for them",
+    "passed": true,
+    "evidence": "REVIEW.md:173 says public fields on passive ECS components/resources are appropriate and need no encapsulation."
+   },
+   {
+    "grader": "08-type-complexity-handled-as-ecs.md",
+    "text": "If REVIEW.md mentions clippy's type_complexity warning on stun_wounded's query, it recommends a crate-level allow (as Bevy's own workspace does) or a type alias, not splitting the system or wrapping the query in a custom SystemParam only to silence the lint; passes if the warning is not mentioned",
+    "passed": true,
+    "evidence": "REVIEW.md:185 calls complex query types valid and :196-198 recommends `type_complexity = \"allow\"` in [lints.clippy]."
+   },
+   {
+    "grader": "09-findings-cite-locations-and-rules.md",
+    "text": "Each finding in REVIEW.md cites a file:line location (or whole file) and names the rule or source it relies on, such as Bevy's documentation or a named Rust guideline",
+    "passed": true,
+    "evidence": "Every finding 1-8 heading cites a file:line (or whole file) and has a **Rule:** line naming a source (Bevy digest, M-PANIC-IS-STOP, C-VALIDATE, clippy lints, C-DEBUG)."
+   },
+   {
+    "grader": "10-fixes-shown-as-code.md",
+    "text": "Each must-fix and should-fix finding in REVIEW.md shows the fix as a short code change, not only a prose description",
+    "passed": true,
+    "evidence": "All Must-fix (1-6) and Should-fix (7) findings include code blocks (:15-23, :35-39, :51-65, :77-86, :98-102, :114-120, :134-142)."
+   },
+   {
+    "grader": "11-code-left-unchanged.md",
+    "text": "src/lib.rs, tests/arena.rs, and Cargo.toml are unchanged, and the only new file the run leaves behind is REVIEW.md (a target directory from running cargo is fine)",
+    "passed": true,
+    "evidence": "diff -r original run-4 shows no differences other than the added REVIEW.md; run-4.changes.txt lists only REVIEW.md as new."
+   }
+  ]
+ },
+ "review-inventory-module": {
+  "claude-with": [
+   {
+    "grader": "01-flags-panics-as-top-priority.md",
+    "text": "REVIEW.md flags the unwrap() calls on fallible paths (the file read in load, the numeric parses in parse_line, the map lookup in total_value) and places them in its highest-priority category",
+    "passed": true,
+    "evidence": "REVIEW.md:22-46 'Must fix' finding 1 covers unwraps at :54 (total_value lookup), :76/:77 (parses), :83 (file read); it is the first item in the top 'Must fix' tier."
+   },
+   {
+    "grader": "02-flags-rc-refcell-api.md",
+    "text": "REVIEW.md flags Rc<RefCell<..>> in the public API, including Inventory::new returning Rc<RefCell<Inventory>>",
+    "passed": true,
+    "evidence": "REVIEW.md:105-134 finding 4 flags Rc<RefCell<..>> in public signatures and states Inventory::new() and load() return Rc<RefCell<Inventory>>."
+   },
+   {
+    "grader": "03-flags-borrowed-param-types.md",
+    "text": "REVIEW.md flags the &String and &Vec<String> parameters and recommends &str and &[String] (or an iterator)",
+    "passed": true,
+    "evidence": "REVIEW.md:166-174 finding 6 flags &String/&Vec<String> and recommends name: &str, line: &str, names: &[String] or impl IntoIterator."
+   },
+   {
+    "grader": "04-flags-error-type.md",
+    "text": "REVIEW.md flags that InventoryError does not implement std::fmt::Display or std::error::Error",
+    "passed": true,
+    "evidence": "REVIEW.md:140 'InventoryError has no Display or Error impl', with C-GOOD-ERR and a thiserror fix."
+   },
+   {
+    "grader": "05-flags-bool-parameter.md",
+    "text": "REVIEW.md flags the bool parameter on report (verbose) and recommends an enum or separate methods",
+    "passed": true,
+    "evidence": "REVIEW.md:176-188 finding 7 flags report(false) and recommends `enum Detail { Summary, Full }`."
+   },
+   {
+    "grader": "06-flags-nondeterministic-output.md",
+    "text": "REVIEW.md flags that report iterates a HashMap, so its output order is nondeterministic",
+    "passed": true,
+    "evidence": "REVIEW.md:192-199 finding 8: 'report output order is random', HashMap iteration order changes run to run; fix sorts keys or uses BTreeMap."
+   },
+   {
+    "grader": "07-flags-deny-warnings.md",
+    "text": "REVIEW.md flags #![deny(warnings)] and recommends enforcing warnings in CI instead",
+    "passed": true,
+    "evidence": "REVIEW.md:282-288 finding 12 flags #![deny(warnings)] and recommends `cargo clippy --all-targets -- -D warnings` in CI plus a [lints] table."
+   },
+   {
+    "grader": "08-findings-cite-locations.md",
+    "text": "Every finding in REVIEW.md cites a location in inventory.rs as a line number or line range, or explicitly marks itself as whole-file",
+    "passed": true,
+    "evidence": "All 14 findings carry inventory.rs line numbers in their headings (e.g. REVIEW.md:22, :166, :282); finding 14 (REVIEW.md:305) is marked 'whole file'."
+   },
+   {
+    "grader": "09-findings-cite-named-rules.md",
+    "text": "Most findings (at least two thirds) cite a named, look-up-able rule with its source, such as an API Guidelines code (C-GETTER), an Effective Rust item, a Microsoft M- code, or a clippy lint name",
+    "passed": true,
+    "evidence": "Every one of the 14 findings has a **Rule:** line naming a source (M-PANIC-ON-BUG, Effective Rust Item 18, C-GOOD-ERR, C-GENERIC/clippy::ptr_arg, C-GETTER, etc.)."
+   },
+   {
+    "grader": "10-fixes-shown-as-code.md",
+    "text": "Most findings (at least two thirds) show the fix as a short code snippet rather than prose only",
+    "passed": true,
+    "evidence": "11 of 14 findings have fenced code blocks (findings 1-11); 12-13 give inline code/command fixes; only 14 is mostly prose, well above two thirds."
+   },
+   {
+    "grader": "11-says-what-is-good.md",
+    "text": "REVIEW.md includes a section on what the code already does well, naming at least two specific things",
+    "passed": true,
+    "evidence": "REVIEW.md:318-327 'What's already good' names integer cents, the parts.len() check before indexing, Result-returning signatures, and the private keyed map."
+   },
+   {
+    "grader": "12-code-left-unchanged.md",
+    "text": "inventory.rs is not modified and no rewritten version of the full module is included in REVIEW.md",
+    "passed": true,
+    "evidence": "diff original/inventory.rs run-1/inventory.rs shows no difference (changes.txt: none); REVIEW.md contains only fragment snippets, no full rewritten module."
+   }
+  ],
+  "claude-without": [
+   {
+    "grader": "01-flags-panics-as-top-priority.md",
+    "text": "REVIEW.md flags the unwrap() calls on fallible paths (the file read in load, the numeric parses in parse_line, the map lookup in total_value) and places them in its highest-priority category",
+    "passed": true,
+    "evidence": "REVIEW.md:83-91 section 2.1 (under '2. Must fix: correctness') tables unwraps at lines 83, 76-77 and 54; 'Must fix' is the review's highest tier (sections 1-2)."
+   },
+   {
+    "grader": "02-flags-rc-refcell-api.md",
+    "text": "REVIEW.md flags Rc<RefCell<..>> in the public API, including Inventory::new returning Rc<RefCell<Inventory>>",
+    "passed": true,
+    "evidence": "REVIEW.md:23-38 section 1.1 flags `pub fn new() -> Rc<RefCell<Inventory>>` and the inner Rc<RefCell<HashMap>>, explaining caller impact."
+   },
+   {
+    "grader": "03-flags-borrowed-param-types.md",
+    "text": "REVIEW.md flags the &String and &Vec<String> parameters and recommends &str and &[String] (or an iterator)",
+    "passed": true,
+    "evidence": "REVIEW.md:148 '&String (lines 34, 60, 71, 82) should be &str, and &Vec<String> (line 51) should be &[String] or impl IntoIterator'."
+   },
+   {
+    "grader": "04-flags-error-type.md",
+    "text": "REVIEW.md flags that InventoryError does not implement std::fmt::Display or std::error::Error",
+    "passed": true,
+    "evidence": "REVIEW.md:55 'It implements neither Display nor std::error::Error'."
+   },
+   {
+    "grader": "05-flags-bool-parameter.md",
+    "text": "REVIEW.md flags the bool parameter on report (verbose) and recommends an enum or separate methods",
+    "passed": true,
+    "evidence": "REVIEW.md:169 'report(true) is unreadable... Use two methods (summary()/detailed_report()) or an enum (Detail::Summary | Detail::Full)'."
+   },
+   {
+    "grader": "06-flags-nondeterministic-output.md",
+    "text": "REVIEW.md flags that report iterates a HashMap, so its output order is nondeterministic",
+    "passed": true,
+    "evidence": "REVIEW.md:123-125 section 2.6 'report output order is random' because it iterates a HashMap; fix with BTreeMap or sorted keys."
+   },
+   {
+    "grader": "07-flags-deny-warnings.md",
+    "text": "REVIEW.md flags #![deny(warnings)] and recommends enforcing warnings in CI instead",
+    "passed": true,
+    "evidence": "REVIEW.md:172-174 section 3.7 flags #![deny(warnings)] and says to enforce it in CI (RUSTFLAGS / cargo clippy -- -D warnings) or a [lints] table."
+   },
+   {
+    "grader": "08-findings-cite-locations.md",
+    "text": "Every finding in REVIEW.md cites a location in inventory.rs as a line number or line range, or explicitly marks itself as whole-file",
+    "passed": false,
+    "evidence": "Several findings give no line number and are not marked whole-file: 2.2 (REVIEW.md:93-100), 2.5 (:116-121), 3.4 (:156-158), 3.5 (:160-164), 3.6 (:166-170), and the docs/tests bullets (:183-184)."
+   },
+   {
+    "grader": "09-findings-cite-named-rules.md",
+    "text": "Most findings (at least two thirds) cite a named, look-up-able rule with its source, such as an API Guidelines code (C-GETTER), an Effective Rust item, a Microsoft M- code, or a clippy lint name",
+    "passed": false,
+    "evidence": "Almost no findings cite a named rule; only clippy lint names appear in 3.2 (ptr_arg), 3.6 (needless_borrow) and section 4 (redundant_field_names), about 3 of ~17 findings."
+   },
+   {
+    "grader": "10-fixes-shown-as-code.md",
+    "text": "Most findings (at least two thirds) show the fix as a short code snippet rather than prose only",
+    "passed": false,
+    "evidence": "Only 1.1, 1.2 and 3.1 have code blocks; 2.3, 2.5, 2.6, 3.5 are prose-only and the rest rely on inline fragments, so even counted generously it is about 11-12 of 17, not clearly two thirds."
+   },
+   {
+    "grader": "11-says-what-is-good.md",
+    "text": "REVIEW.md includes a section on what the code already does well, naming at least two specific things",
+    "passed": false,
+    "evidence": "No section on what the code does well; the review goes from findings straight to 'Suggested order of work' (REVIEW.md:188-195)."
+   },
+   {
+    "grader": "12-code-left-unchanged.md",
+    "text": "inventory.rs is not modified and no rewritten version of the full module is included in REVIEW.md",
+    "passed": true,
+    "evidence": "diff shows inventory.rs identical to original; REVIEW.md has only partial snippets, no full rewritten module."
+   }
+  ],
+  "codex-without": [
+   {
+    "grader": "01-flags-panics-as-top-priority.md",
+    "text": "REVIEW.md flags the unwrap() calls on fallible paths (the file read in load, the numeric parses in parse_line, the map lookup in total_value) and places them in its highest-priority category",
+    "passed": false,
+    "evidence": "Only the parse unwraps (finding 2, :76-77) are 'High'; the file-read unwrap (finding 5, :83) and the total_value lookup unwrap (finding 6, :54) are ranked 'Medium' (REVIEW.md:39, :47)."
+   },
+   {
+    "grader": "02-flags-rc-refcell-api.md",
+    "text": "REVIEW.md flags Rc<RefCell<..>> in the public API, including Inventory::new returning Rc<RefCell<Inventory>>",
+    "passed": true,
+    "evidence": "REVIEW.md:74 'Simplify ownership before building on this API. Both the inventory and its map are wrapped in Rc<RefCell<_>>', recommending an owned Inventory that callers wrap themselves."
+   },
+   {
+    "grader": "03-flags-borrowed-param-types.md",
+    "text": "REVIEW.md flags the &String and &Vec<String> parameters and recommends &str and &[String] (or an iterator)",
+    "passed": true,
+    "evidence": "REVIEW.md:75 'Accept &str for borrowed names, &[String] (or a suitable iterator)... The current &String and &Vec<String> signatures unnecessarily constrain callers.'"
+   },
+   {
+    "grader": "04-flags-error-type.md",
+    "text": "REVIEW.md flags that InventoryError does not implement std::fmt::Display or std::error::Error",
+    "passed": true,
+    "evidence": "REVIEW.md:77 'Implement Display and std::error::Error for InventoryError'."
+   },
+   {
+    "grader": "05-flags-bool-parameter.md",
+    "text": "REVIEW.md flags the bool parameter on report (verbose) and recommends an enum or separate methods",
+    "passed": false,
+    "evidence": "The verbose bool parameter on report (inventory.rs:95) is never mentioned in REVIEW.md."
+   },
+   {
+    "grader": "06-flags-nondeterministic-output.md",
+    "text": "REVIEW.md flags that report iterates a HashMap, so its output order is nondeterministic",
+    "passed": true,
+    "evidence": "REVIEW.md:70 'Report order is unspecified (inventory.rs:97). HashMap iteration does not provide stable ordering.'"
+   },
+   {
+    "grader": "07-flags-deny-warnings.md",
+    "text": "REVIEW.md flags #![deny(warnings)] and recommends enforcing warnings in CI instead",
+    "passed": false,
+    "evidence": "#![deny(warnings)] (inventory.rs:1) is not mentioned anywhere in REVIEW.md."
+   },
+   {
+    "grader": "08-findings-cite-locations.md",
+    "text": "Every finding in REVIEW.md cites a location in inventory.rs as a line number or line range, or explicitly marks itself as whole-file",
+    "passed": false,
+    "evidence": "The four 'Maintainability improvements' bullets (REVIEW.md:74-77: Rc<RefCell>, &String params, lookups, error trait) cite no line numbers."
+   },
+   {
+    "grader": "09-findings-cite-named-rules.md",
+    "text": "Most findings (at least two thirds) cite a named, look-up-able rule with its source, such as an API Guidelines code (C-GETTER), an Effective Rust item, a Microsoft M- code, or a clippy lint name",
+    "passed": false,
+    "evidence": "No finding cites a named rule (no API Guidelines codes, Effective Rust items, M- codes, or clippy lints)."
+   },
+   {
+    "grader": "10-fixes-shown-as-code.md",
+    "text": "Most findings (at least two thirds) show the fix as a short code snippet rather than prose only",
+    "passed": false,
+    "evidence": "Fixes are prose only (e.g. REVIEW.md:13, :21, :45); the only code fragment is `get(name).cloned()` at :76, no code blocks."
+   },
+   {
+    "grader": "11-says-what-is-good.md",
+    "text": "REVIEW.md includes a section on what the code already does well, naming at least two specific things",
+    "passed": false,
+    "evidence": "REVIEW.md has no section on what the code already does well."
+   },
+   {
+    "grader": "12-code-left-unchanged.md",
+    "text": "inventory.rs is not modified and no rewritten version of the full module is included in REVIEW.md",
+    "passed": true,
+    "evidence": "diff shows inventory.rs identical to original; REVIEW.md contains no rewritten module."
+   }
+  ],
+  "codex-with": [
+   {
+    "grader": "01-flags-panics-as-top-priority.md",
+    "text": "REVIEW.md flags the unwrap() calls on fallible paths (the file read in load, the numeric parses in parse_line, the map lookup in total_value) and places them in its highest-priority category",
+    "passed": true,
+    "evidence": "REVIEW.md:7-20 'Must fix' finding 1 covers unwraps at :54, :76, :77, :83 with map_err/ok_or replacements; it is the first item in the top tier."
+   },
+   {
+    "grader": "02-flags-rc-refcell-api.md",
+    "text": "REVIEW.md flags Rc<RefCell<..>> in the public API, including Inventory::new returning Rc<RefCell<Inventory>>",
+    "passed": true,
+    "evidence": "REVIEW.md:93-103 finding 6: 'new and load return Rc<RefCell<Inventory>>', plus the inner wrapper; fix returns Self."
+   },
+   {
+    "grader": "03-flags-borrowed-param-types.md",
+    "text": "REVIEW.md flags the &String and &Vec<String> parameters and recommends &str and &[String] (or an iterator)",
+    "passed": true,
+    "evidence": "REVIEW.md:97-108 flags &String/&Vec<String> and gives signatures with name: &str and names: &[String]."
+   },
+   {
+    "grader": "04-flags-error-type.md",
+    "text": "REVIEW.md flags that InventoryError does not implement std::fmt::Display or std::error::Error",
+    "passed": true,
+    "evidence": "REVIEW.md:75 'InventoryError implements neither Display nor std::error::Error'."
+   },
+   {
+    "grader": "05-flags-bool-parameter.md",
+    "text": "REVIEW.md flags the bool parameter on report (verbose) and recommends an enum or separate methods",
+    "passed": true,
+    "evidence": "REVIEW.md:156-161 flags report(false) and recommends `enum ReportMode { Summary, Verbose }` or separate methods."
+   },
+   {
+    "grader": "06-flags-nondeterministic-output.md",
+    "text": "REVIEW.md flags that report iterates a HashMap, so its output order is nondeterministic",
+    "passed": true,
+    "evidence": "REVIEW.md:116-131 finding 7 'Reports expose randomized map order (inventory.rs:97)', fix sorts entries or uses BTreeMap."
+   },
+   {
+    "grader": "07-flags-deny-warnings.md",
+    "text": "REVIEW.md flags #![deny(warnings)] and recommends enforcing warnings in CI instead",
+    "passed": true,
+    "evidence": "REVIEW.md:171-173 flags source-level deny(warnings) and says 'Remove the crate-level deny, enforce -D warnings in CI'."
+   },
+   {
+    "grader": "08-findings-cite-locations.md",
+    "text": "Every finding in REVIEW.md cites a location in inventory.rs as a line number or line range, or explicitly marks itself as whole-file",
+    "passed": true,
+    "evidence": "All 10 finding headings cite inventory.rs lines (e.g. :7, :93, :167); finding 8 (REVIEW.md:133) is marked 'whole file'."
+   },
+   {
+    "grader": "09-findings-cite-named-rules.md",
+    "text": "Most findings (at least two thirds) cite a named, look-up-able rule with its source, such as an API Guidelines code (C-GETTER), an Effective Rust item, a Microsoft M- code, or a clippy lint name",
+    "passed": true,
+    "evidence": "All 10 findings have a **Rule:** line naming sources (M-PANIC-ON-BUG, C-VALIDATE, C-GOOD-ERR, M-AVOID-WRAPPERS, clippy ptr_arg, C-GETTER, etc.)."
+   },
+   {
+    "grader": "10-fixes-shown-as-code.md",
+    "text": "Most findings (at least two thirds) show the fix as a short code snippet rather than prose only",
+    "passed": true,
+    "evidence": "All 10 findings include a fenced code block showing the fix (REVIEW.md:15-20, 32-41, 51-56, 66-69, 79-89, 101-110, 124-131, 141-146, 160-165, 175-181)."
+   },
+   {
+    "grader": "11-says-what-is-good.md",
+    "text": "REVIEW.md includes a section on what the code already does well, naming at least two specific things",
+    "passed": true,
+    "evidence": "REVIEW.md:183-188 'What's already good' names integer cents, add_item validation, Option/Result usage, and private map storage with no unsafe."
+   },
+   {
+    "grader": "12-code-left-unchanged.md",
+    "text": "inventory.rs is not modified and no rewritten version of the full module is included in REVIEW.md",
+    "passed": true,
+    "evidence": "diff shows inventory.rs identical to original; REVIEW.md snippets are fragments (signatures marked 'bodies require adaptation'), no full rewrite."
+   }
+  ]
+ },
+ "semver-library-api": {
+  "claude-without": [
+   {
+    "grader": "01-implements-fromstr",
+    "text": "src/lib.rs implements std::str::FromStr for Version, so callers can use \"1.2.3\".parse::<Version>()",
+    "passed": true,
+    "evidence": "src/lib.rs:169-175 `impl FromStr for Version` with `type Err = ParseError`; the crate doc example at lib.rs:9 uses `.parse()?` and doctests pass."
+   },
+   {
+    "grader": "02-implements-display",
+    "text": "src/lib.rs implements std::fmt::Display for Version",
+    "passed": true,
+    "evidence": "src/lib.rs:177-190 `impl fmt::Display for Version`; display_round_trips test (lib.rs:533) passes."
+   },
+   {
+    "grader": "03-dedicated-error-type",
+    "text": "src/lib.rs defines a dedicated error type for parse failures that implements both std::fmt::Display and std::error::Error",
+    "passed": true,
+    "evidence": "src/lib.rs:297-341 `pub enum ParseError` with `impl fmt::Display for ParseError` (320) and `impl Error for ParseError {}` (341)."
+   },
+   {
+    "grader": "04-common-traits-derived",
+    "text": "Version derives or implements Debug, Clone, PartialEq, Eq, PartialOrd, Ord, and Hash",
+    "passed": true,
+    "evidence": "src/lib.rs:50 derives Debug, Clone; hand-written Ord (192), PartialOrd (208), PartialEq (214), Eq (220), Hash (222)."
+   },
+   {
+    "grader": "05-fields-private",
+    "text": "Version's fields are private, with accessor methods if callers need the components",
+    "passed": true,
+    "evidence": "src/lib.rs:51-57 fields have no `pub`; accessors major/minor/patch/pre/build/is_prerelease at lib.rs:129-166."
+   },
+   {
+    "grader": "06-rustdoc-with-errors-section",
+    "text": "Public items carry rustdoc comments, and the docs for parsing include an # Errors section",
+    "passed": true,
+    "evidence": "Every public item has rustdoc (#![warn(missing_docs)] at lib.rs:24; `cargo rustc -- -W missing_docs` emits no warnings); Version::parse docs have `# Errors` at lib.rs:83."
+   },
+   {
+    "grader": "07-doc-examples-use-question-mark",
+    "text": "Any doc examples use ? rather than unwrap()",
+    "passed": true,
+    "evidence": "The crate-level example (lib.rs:9-18) uses `?` with `# Ok::<(), ParseError>(())`; no doc example calls unwrap(); 3 doctests pass."
+   },
+   {
+    "grader": "08-precedence-rules-tested",
+    "text": "Ordering ignores build metadata and sorts a prerelease before its release, and unit tests exercise both rules",
+    "passed": true,
+    "evidence": "Ord (lib.rs:192-206) ranks a release above its pre-release and never reads build; tests prerelease_sorts_before_release (563) and build_metadata_is_ignored_for_ordering_and_equality (602) pass."
+   },
+   {
+    "grader": "09-no-unwrap-in-library-code",
+    "text": "No unwrap() or expect() appears in library code outside #[cfg(test)] modules and doc examples",
+    "passed": true,
+    "evidence": "The only unwrap-like calls outside tests are `unwrap_or_default()` (lib.rs:121,125), which cannot panic; unwrap_or_else/panic only appear in #[cfg(test)] (lib.rs:374+)."
+   },
+   {
+    "grader": "10-eq-hash-agree-with-ord",
+    "text": "PartialEq and Hash on Version agree with Ord: either all are derived together, or the hand-written impls compare the same fields (ignoring build metadata consistently), and the docs say which fields equality ignores",
+    "passed": true,
+    "evidence": "PartialEq is defined via cmp (lib.rs:214-218) and Hash skips build (222-230); the Version docs (lib.rs:34-39) state that Ord, PartialEq and Hash all ignore build metadata, and test hash_agrees_with_eq (611) passes."
+   }
+  ],
+  "claude-with": [
+   {
+    "grader": "01-implements-fromstr",
+    "text": "src/lib.rs implements std::str::FromStr for Version, so callers can use \"1.2.3\".parse::<Version>()",
+    "passed": true,
+    "evidence": "src/lib.rs:168-212 `impl FromStr for Version` with `type Err = ParseVersionError`; crate doc (lib.rs:17) uses `\"1.2.3-beta.1\".parse()?`."
+   },
+   {
+    "grader": "02-implements-display",
+    "text": "src/lib.rs implements std::fmt::Display for Version",
+    "passed": true,
+    "evidence": "src/lib.rs:214-225 `impl fmt::Display for Version`; display_round_trips test (593) passes."
+   },
+   {
+    "grader": "03-dedicated-error-type",
+    "text": "src/lib.rs defines a dedicated error type for parse failures that implements both std::fmt::Display and std::error::Error",
+    "passed": true,
+    "evidence": "src/lib.rs:393 `pub struct ParseVersionError` with Display (403-417) and `impl Error for ParseVersionError {}` (419)."
+   },
+   {
+    "grader": "04-common-traits-derived",
+    "text": "Version derives or implements Debug, Clone, PartialEq, Eq, PartialOrd, Ord, and Hash",
+    "passed": true,
+    "evidence": "src/lib.rs:58 derives Debug, Clone, Default; hand-written Ord (227), PartialOrd (241), PartialEq (247), Eq (257), Hash (259)."
+   },
+   {
+    "grader": "05-fields-private",
+    "text": "Version's fields are private, with accessor methods if callers need the components",
+    "passed": true,
+    "evidence": "src/lib.rs:59-65 fields are private; accessors major/minor/patch/pre/build/is_prerelease at lib.rs:130-165."
+   },
+   {
+    "grader": "06-rustdoc-with-errors-section",
+    "text": "Public items carry rustdoc comments, and the docs for parsing include an # Errors section",
+    "passed": true,
+    "evidence": "Cargo.toml sets missing_docs = warn and `cargo rustc -- -W missing_docs` reports nothing; the FromStr::from_str doc has `# Errors` at lib.rs:173 (also Prerelease 311, BuildMetadata 373)."
+   },
+   {
+    "grader": "07-doc-examples-use-question-mark",
+    "text": "Any doc examples use ? rather than unwrap()",
+    "passed": true,
+    "evidence": "All 7 doc examples use `?` inside a hidden `fn main() -> Result<..>` (e.g. lib.rs:16-23, 46-56, 95-99); none call unwrap(); 7 doctests pass."
+   },
+   {
+    "grader": "08-precedence-rules-tested",
+    "text": "Ordering ignores build metadata and sorts a prerelease before its release, and unit tests exercise both rules",
+    "passed": true,
+    "evidence": "Ord (lib.rs:227-239) puts a prerelease below its release and ignores build; tests spec_precedence_examples_are_strictly_increasing (623, ends rc.1 < 1.0.0) and build_metadata_is_ignored_for_ordering_equality_and_hashing (682) pass."
+   },
+   {
+    "grader": "09-no-unwrap-in-library-code",
+    "text": "No unwrap() or expect() appears in library code outside #[cfg(test)] modules and doc examples",
+    "passed": true,
+    "evidence": "No unwrap()/expect() in non-test code; the only expect-like calls (`unwrap_or_else` at 542, `expect_err` at 783) are inside #[cfg(test)] mod tests (534+)."
+   },
+   {
+    "grader": "10-eq-hash-agree-with-ord",
+    "text": "PartialEq and Hash on Version agree with Ord: either all are derived together, or the hand-written impls compare the same fields (ignoring build metadata consistently), and the docs say which fields equality ignores",
+    "passed": true,
+    "evidence": "PartialEq (lib.rs:247-255) and Hash (259-267) both use major/minor/patch/pre and skip build, matching Ord; Version docs (lib.rs:34-36) say equality ignores build metadata; equality_agrees_with_ordering test (696) checks it."
+   }
+  ],
+  "codex-with": [
+   {
+    "grader": "01-implements-fromstr",
+    "text": "src/lib.rs implements std::str::FromStr for Version, so callers can use \"1.2.3\".parse::<Version>()",
+    "passed": true,
+    "evidence": "src/lib.rs:108-148 `impl FromStr for Version` with `type Err = ParseVersionError`; tests call `\"1.2.3-beta.1+build.5\".parse()` (lib.rs:251)."
+   },
+   {
+    "grader": "02-implements-display",
+    "text": "src/lib.rs implements std::fmt::Display for Version",
+    "passed": true,
+    "evidence": "src/lib.rs:150-161 `impl fmt::Display for Version`; round_trips_and_exposes_components test (240) passes."
+   },
+   {
+    "grader": "03-dedicated-error-type",
+    "text": "src/lib.rs defines a dedicated error type for parse failures that implements both std::fmt::Display and std::error::Error",
+    "passed": true,
+    "evidence": "src/lib.rs:64 `pub struct ParseVersionError` with Display (68-72) and `impl Error for ParseVersionError {}` (74)."
+   },
+   {
+    "grader": "04-common-traits-derived",
+    "text": "Version derives or implements Debug, Clone, PartialEq, Eq, PartialOrd, Ord, and Hash",
+    "passed": true,
+    "evidence": "src/lib.rs:15 derives Clone, Debug; hand-written Ord (176), PartialOrd (209), PartialEq (215), Eq (221), Hash (223)."
+   },
+   {
+    "grader": "05-fields-private",
+    "text": "Version's fields are private, with accessor methods if callers need the components",
+    "passed": true,
+    "evidence": "src/lib.rs:16-20 fields are private; accessors major/minor/patch/prerelease/build_metadata at lib.rs:31-59."
+   },
+   {
+    "grader": "06-rustdoc-with-errors-section",
+    "text": "Public items carry rustdoc comments, and the docs for parsing include an # Errors section",
+    "passed": true,
+    "evidence": "All public items are documented (`cargo rustc -- -W missing_docs` emits no warnings), and Version::parse docs include `# Errors` at lib.rs:25."
+   },
+   {
+    "grader": "07-doc-examples-use-question-mark",
+    "text": "Any doc examples use ? rather than unwrap()",
+    "passed": false,
+    "evidence": "The crate has no doc examples at all (`cargo test --doc`: 0 tests), so there is no evidence of an example using `?`; the expected outcome requires one."
+   },
+   {
+    "grader": "08-precedence-rules-tested",
+    "text": "Ordering ignores build metadata and sorts a prerelease before its release, and unit tests exercise both rules",
+    "passed": true,
+    "evidence": "Ord (lib.rs:176-207) ranks None prerelease above Some and never reads build; tests follows_spec_precedence_sequence (288, rc.1 < 1.0.0) and metadata_does_not_affect_precedence_equality_or_hashing (321) pass."
+   },
+   {
+    "grader": "09-no-unwrap-in-library-code",
+    "text": "No unwrap() or expect() appears in library code outside #[cfg(test)] modules and doc examples",
+    "passed": true,
+    "evidence": "Library code uses only `?`/ok_or_else; the two expect() calls (lib.rs:236, 251) are inside #[cfg(test)] mod tests (230+)."
+   },
+   {
+    "grader": "10-eq-hash-agree-with-ord",
+    "text": "PartialEq and Hash on Version agree with Ord: either all are derived together, or the hand-written impls compare the same fields (ignoring build metadata consistently), and the docs say which fields equality ignores",
+    "passed": true,
+    "evidence": "PartialEq uses cmp (lib.rs:215-219) and Hash covers core and prerelease, not build (223-228), which matches Ord since valid numbers have no leading zeros; docs at lib.rs:3 and 13 say equality and hashing ignore build metadata."
+   }
+  ],
+  "codex-without": [
+   {
+    "grader": "01-implements-fromstr",
+    "text": "src/lib.rs implements std::str::FromStr for Version, so callers can use \"1.2.3\".parse::<Version>()",
+    "passed": true,
+    "evidence": "src/lib.rs:74-116 `impl FromStr for Version` with `type Err = ParseError`; the test helper uses `s.parse()` (lib.rs:185)."
+   },
+   {
+    "grader": "02-implements-display",
+    "text": "src/lib.rs implements std::fmt::Display for Version",
+    "passed": true,
+    "evidence": "src/lib.rs:118-129 `impl fmt::Display for Version`; round_trip_and_accessors test (189) passes."
+   },
+   {
+    "grader": "03-dedicated-error-type",
+    "text": "src/lib.rs defines a dedicated error type for parse failures that implements both std::fmt::Display and std::error::Error",
+    "passed": true,
+    "evidence": "src/lib.rs:20 `pub struct ParseError(&'static str)` with Display (22-26) and `impl Error for ParseError {}` (28)."
+   },
+   {
+    "grader": "04-common-traits-derived",
+    "text": "Version derives or implements Debug, Clone, PartialEq, Eq, PartialOrd, Ord, and Hash",
+    "passed": false,
+    "evidence": "src/lib.rs:9 derives only Clone, Debug, and lib.rs:131-178 hand-write Ord, PartialOrd, PartialEq, Eq; Hash is neither derived nor implemented."
+   },
+   {
+    "grader": "05-fields-private",
+    "text": "Version's fields are private, with accessor methods if callers need the components",
+    "passed": true,
+    "evidence": "src/lib.rs:10-16 fields are private; accessors major/minor/patch/prerelease/build at lib.rs:35-51."
+   },
+   {
+    "grader": "06-rustdoc-with-errors-section",
+    "text": "Public items carry rustdoc comments, and the docs for parsing include an # Errors section",
+    "passed": false,
+    "evidence": "Version::parse, major, minor and patch (lib.rs:31-43) have no rustdoc (`cargo rustc -- -W missing_docs` gives 4 warnings), and no parsing doc has an `# Errors` section."
+   },
+   {
+    "grader": "07-doc-examples-use-question-mark",
+    "text": "Any doc examples use ? rather than unwrap()",
+    "passed": false,
+    "evidence": "The crate has no doc examples at all (`cargo test --doc`: 0 tests), so there is no evidence of an example using `?`."
+   },
+   {
+    "grader": "08-precedence-rules-tested",
+    "text": "Ordering ignores build metadata and sorts a prerelease before its release, and unit tests exercise both rules",
+    "passed": true,
+    "evidence": "Ord (lib.rs:131-164) ranks an empty prerelease above a non-empty one and ignores build; tests semver_precedence (211, rc.1 < 1.0.0) and metadata_does_not_affect_equality_or_ordering (238) pass."
+   },
+   {
+    "grader": "09-no-unwrap-in-library-code",
+    "text": "No unwrap() or expect() appears in library code outside #[cfg(test)] modules and doc examples",
+    "passed": true,
+    "evidence": "Library code has no unwrap()/expect(); the only unwrap() is in the test helper v() at lib.rs:185 inside #[cfg(test)]."
+   },
+   {
+    "grader": "10-eq-hash-agree-with-ord",
+    "text": "PartialEq and Hash on Version agree with Ord: either all are derived together, or the hand-written impls compare the same fields (ignoring build metadata consistently), and the docs say which fields equality ignores",
+    "passed": false,
+    "evidence": "Version has no Hash impl (lib.rs:9 derives only Clone, Debug), so the Hash half of the assertion cannot be met, although PartialEq uses cmp (172-176) and the crate doc (lib.rs:4) says equality ignores build metadata."
+   }
+  ]
+ }
+}

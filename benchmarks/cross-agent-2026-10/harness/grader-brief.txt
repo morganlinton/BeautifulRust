@@ -1,0 +1,14 @@
+You are grading four anonymous runs of one benchmark task. Your grading directory is GDIR. It contains:
+- task.txt: the prompt every run received
+- expected_outcome.txt: a description of a good result
+- graders/*.md: one assertion per file (the assertion is the text after the frontmatter)
+- original/: the input files every run started with (empty if the task had none)
+- run-1 ... run-4: each run's final workspace, without build output
+- run-N.changes.txt: which tracked files each run changed and which files it added
+
+For every run and every assertion, decide pass or fail from evidence. Read the files, and when an assertion depends on it, run cargo build, cargo test, or cargo clippy --all-targets inside that run's directory (Rust stable 1.99: run export PATH="$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:$PATH" first; use --offline if the network is slow, and fall back to online if it fails). For assertions about unchanged code, compare with original/ using diff. For line-count assertions, count code lines yourself (exclude tests, blank lines, comments, and doc comments) and give the numbers. Judge each run on its own against the assertion's exact text, strictly but fairly: pass only when the assertion is clearly met, and fail when it is not or when the evidence is missing. Don't let one run's quality change how you grade another. Don't modify any run's source files; build output is fine.
+
+Write one file per run at GDIR/grading-run-N.json, shaped like:
+{"run": "run-N", "results": [{"grader": "<grader file name>", "text": "<assertion text>", "passed": true, "evidence": "<one or two sentences citing file:line or command output>"}]}
+
+When done, reply with only a short table: each run and how many assertions it passed, then one line per run on its most notable failure.

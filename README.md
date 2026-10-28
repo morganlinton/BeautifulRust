@@ -215,6 +215,27 @@ insertion order to an ordered collection instead of a `HashMap` that would silen
 reorder output. Each port comes with a `PORTING.md` that maps the old API and tests to the
 new ones and lists every deliberate difference.
 
+## Bevy
+
+Bevy calls your systems and builds their arguments, so some general Rust advice is wrong
+for them. Taken at face value, the skills would tell an agent to change `Res<Time>` to a
+reference, replace `use bevy::prelude::*` with explicit imports, and split a system to
+quiet clippy. When a crate depends on `bevy` or `bevy_ecs`, both the writing and review
+skills now read [`references/bevy.md`](skills/rust-best-practices/references/bevy.md)
+first. It covers Bevy 0.20 and does two things:
+
+- **It names the conventions to leave alone:** system parameters taken by value, the
+  Bevy prelude, public fields on plain-data components, and complex query types.
+- **It lists the ECS bugs that compile cleanly.** Two queries that can both mutate the
+  same component panic with error B0001 on the first frame. A system can read the world
+  before another system's `Commands` have applied. Systems that depend on each other may
+  have no order between them. A `.single().unwrap()` crashes the game once the player
+  dies.
+
+Every behavior in the reference was checked with a test against bevy 0.20.0. Two eval
+cases cover it: a review of a combat plugin with two of those bugs planted, and a feature
+added to the fixed plugin, which checks that the agent keeps Bevy's conventions.
+
 ## Enforcing the rules with clippy
 
 The skills teach the rules; the lints keep them from slipping back in. Copy
@@ -228,7 +249,9 @@ cargo clippy --all-targets --all-features -- -D warnings
 It flags `unwrap()` outside tests, `unsafe` blocks without a `// SAFETY:` comment, `#[allow]`
 without a reason, any `bool` function parameter, silent lossy `as` casts, missing `# Errors`
 and `# Panics` docs, and leftover `dbg!` and `todo!`. Lints marked `[lib]` in the file are
-for libraries, and applications can drop them.
+for libraries, and applications can drop them. Bevy crates need four extra allows,
+listed in the [Bevy reference](skills/rust-best-practices/references/bevy.md#keep-bevys-conventions),
+because the table otherwise flags every idiomatic system signature.
 
 Every lint in the table is proven to fire. [`lints/check/`](lints/check/src/lib.rs) is a small crate
 with one deliberate violation per lint, and this script runs clippy on it from the repo
@@ -274,7 +297,7 @@ BeautifulRust/
 ├── skills/
 │   ├── rust-best-practices/   writing skill
 │   │   ├── SKILL.md
-│   │   ├── references/        one digest per source
+│   │   ├── references/        one digest per source, plus bevy.md
 │   │   └── evals/
 │   ├── rust-review/           review skill
 │   │   ├── SKILL.md
@@ -291,6 +314,8 @@ BeautifulRust/
 │   ├── check-lints.sh         proves every lint in the table fires
 │   ├── check-examples.py      compiles every Rust example in the docs
 │   └── examples.json          context that lets fragment examples compile
+├── benchmarks/
+│   └── cross-agent-2026-10/   Claude Code vs Codex, with and without the skills
 ├── examples/
 │   └── review-inventory.md    a real review report
 ├── CHANGELOG.md
@@ -300,7 +325,7 @@ BeautifulRust/
 
 ## Testing the skills
 
-`skills/rust-best-practices/evals/` holds three test cases in the layout `claude plugin eval`
+`skills/rust-best-practices/evals/` holds four test cases in the layout `claude plugin eval`
 reads: a library API design task, an application CLI task, and a refactor-this-module task
 with an input file. Each case has the prompt, a description of a good result, and one
 assertion per file under `graders/`. Run them with and without the skill from the skill
@@ -310,14 +335,27 @@ directory:
 claude plugin eval . --allow-tools Write,Edit,Bash --scaffold
 ```
 
-`skills/rust-review/evals/` holds a review case for the same messy module, and
-`skills/rust-port/evals/` holds a C module and a Python module to port, each with its
-original test suite. Run them the same way from each skill's directory.
+`skills/rust-review/evals/` holds a review case for the same messy module and one for a
+Bevy plugin with two ECS bugs planted, and `skills/rust-port/evals/` holds a C module and
+a Python module to port, each with its original test suite. The writing skill also has a
+Bevy case that adds a feature to a working plugin. Run them the same way from each
+skill's directory.
 
-These are real model runs and are billed. In the last comparison the writing skill passed 29 of
-30 assertions against 24 of 30 without it, at roughly a third more tokens per task. The
-review skill passed 11 of 12 against 7 of 12, and the porting skill 22 of 22 against
-19 of 22.
+These are real model runs and are billed.
+
+**Across agents.** The [October 2026 benchmark](benchmarks/cross-agent-2026-10/README.md)
+ran all eight cases on Claude Code and OpenAI's Codex CLI, with and without the skills,
+and graded the results blind:
+
+| | No skills | Skills |
+| --- | --- | --- |
+| Claude Code (Opus 5.5) | 72/85 (85%) | 80/85 (94%) |
+| Codex CLI (default model) | 53/85 (62%) | 76/85 (89%) |
+
+The skills helped Codex more than Claude, and helped reviews most. They hurt in one case:
+Claude did worse on the Bevy feature task with them. The benchmark page has the details,
+the method, and the caveats. Notably, it was one run per configuration, graded by a
+Claude model.
 
 ## Updating
 

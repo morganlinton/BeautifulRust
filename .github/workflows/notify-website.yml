@@ -1,0 +1,30 @@
+# Tells the website (morganlinton/BeautifulRust-Website) to rebuild whenever main changes
+# or a release is published, so the site updates in a minute or two instead of waiting
+# for its hourly refresh.
+#
+# Needs one Actions secret, WEBSITE_DEPLOY_HOOK_URL: the website's Vercel deploy hook
+# (Vercel project > Settings > Git > Deploy Hooks). Until it's set, runs skip quietly.
+
+name: Notify website
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+
+permissions: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask Vercel to rebuild the website
+        env:
+          HOOK: ${{ secrets.WEBSITE_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::notice::WEBSITE_DEPLOY_HOOK_URL is not set; skipping."
+            exit 0
+          fi
+          curl --fail --silent --show-error --request POST "$HOOK"
