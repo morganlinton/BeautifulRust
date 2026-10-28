@@ -36,6 +36,11 @@ All notable changes to this project are listed here. Versions follow
 
 - The glob-import rule in both skills allows a framework's documented prelude, such as
   `use bevy::prelude::*`. Clippy's `wildcard_imports` already exempts these.
+- Both skills now cover `impl Into<T>` parameters and collected return values, from the
+  Google Rust Style Guide's "Accepting Into" and "Iterators vs. owned collections in
+  return types". Application code takes `String` or `&str` rather than
+  `impl Into<String>`, and library code returns an iterator instead of collecting into
+  a `Vec`. `rust-review` flags both, with Google's exceptions for owned results.
 
 ### Fixed
 

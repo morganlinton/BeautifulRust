@@ -80,7 +80,11 @@ Work through these in order. The first two categories are where real bugs live.
 
 - Parameters: `&String`, `&Vec<T>`, or `&Box<T>` instead of `&str`, `&[T]`, or `&T`; a
   `bool` parameter in a public signature; ownership taken and then cloned, or a borrow
-  cloned internally to get ownership.
+  cloned internally to get ownership; `impl Into<T>` in application code, or on a library
+  function too rarely called to justify a copy per argument type.
+- Return types: a library function that collects into a `Vec` only to return it, when an
+  iterator would do. Owned results are fine when callers need ownership or random access,
+  or when building the collection is the function's job.
 - Visibility: public fields that should be private, `Rc`, `RefCell`, or `Arc` in public
   signatures, or third-party types leaking into the API.
 - Missing standard traits: `Debug` on public types, `Display` on errors, `Default` next to

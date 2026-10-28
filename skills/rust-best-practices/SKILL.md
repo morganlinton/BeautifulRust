@@ -26,8 +26,8 @@ Where they disagree, this file says which to follow and why.
   constructors that validate once. Then the compiler enforces what a comment only requests.
 - **Application code is not library code.** Library code (anything with external users)
   follows the API-design rules below strictly. Application code should favor simplicity
-  and directness: concrete types, `anyhow`-style errors, `Vec` return values, no
-  speculative generality.
+  and directness: concrete types, `String` or `&str` rather than `impl Into<String>`
+  parameters, `anyhow`-style errors, `Vec` return values, no speculative generality.
 - **Let the tools do the work.** rustfmt owns formatting, clippy owns idiom checks, the
   compiler owns memory safety. Spend your attention on design.
 
@@ -218,8 +218,8 @@ docs which fields equality ignores.
   }
   ```
 
-- Hide implementation iterator types behind `impl Iterator<Item = T>` (internal APIs) or
-  a newtype (public APIs you must keep stable).
+- Return iterators, not a collected `Vec`, behind `impl Iterator<Item = T>` (internal APIs)
+  or a newtype (public APIs you must keep stable).
 - Expose each public item at exactly one path. Don't `pub use` a foreign crate's items
   unless you are an umbrella crate. Avoid leaking third-party types into your public API;
   feature-gate `serde` impls behind a feature named `serde`. If a dependency's type must
