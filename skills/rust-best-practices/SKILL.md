@@ -218,8 +218,8 @@ docs which fields equality ignores.
   }
   ```
 
-- Return iterators, not a collected `Vec`, behind `impl Iterator<Item = T>` (internal APIs)
-  or a newtype (public APIs you must keep stable).
+- Library code returns iterators, not a `Vec` collected only to return, behind `impl
+  Iterator<Item = T>` (internal APIs) or a newtype (public APIs you must keep stable).
 - Expose each public item at exactly one path. Don't `pub use` a foreign crate's items
   unless you are an umbrella crate. Avoid leaking third-party types into your public API;
   feature-gate `serde` impls behind a feature named `serde`. If a dependency's type must
