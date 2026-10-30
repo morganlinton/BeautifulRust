@@ -110,6 +110,35 @@ pub fn boom() {
     panic!("boom");
 }
 
+/// Returns the byte after the header.
+///
+/// # Panics
+///
+/// Panics if `bytes` is shorter than the header.
+#[must_use]
+pub fn body_byte(bytes: &[u8]) -> u8 {
+    assert!(bytes.len() > HEADER_LEN); // expect: clippy::missing_assert_message
+    bytes[HEADER_LEN]
+}
+
+/// The same check with a message, which stays quiet.
+///
+/// # Panics
+///
+/// Panics if `bytes` is shorter than the header.
+#[must_use]
+pub fn body_byte_checked(bytes: &[u8]) -> u8 {
+    assert!(
+        bytes.len() > HEADER_LEN,
+        "{} bytes is too short for the header",
+        bytes.len()
+    );
+    bytes[HEADER_LEN]
+}
+
+/// Length of the fixed header.
+const HEADER_LEN: usize = 4;
+
 // --------------------------------------------------------------- suppressions
 
 /// Suppresses a lint without a reason, using `allow` instead of `expect`.
@@ -202,6 +231,28 @@ impl SharedText {
     pub fn as_str(&self) -> &str {
         &self.text
     }
+}
+
+// ------------------------------------------------------------------ evolution
+
+/// An exported enum that downstream code can match exhaustively.
+#[derive(Debug)]
+// expect: clippy::exhaustive_enums
+pub enum Mode {
+    /// The first mode.
+    Fast,
+    /// The second mode.
+    Slow,
+}
+
+/// The same enum marked `#[non_exhaustive]`, which stays quiet.
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum Level {
+    /// The first level.
+    Low,
+    /// The second level.
+    High,
 }
 
 // --------------------------------------------------------------------- idioms
