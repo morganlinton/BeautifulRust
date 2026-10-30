@@ -115,6 +115,54 @@ The crate builds and the tests pass.
 """
 
 
+VALID_PORTABLE = {
+    "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+    "name": "demo",
+    "version": "1.0.0",
+    "extensions": {
+        "com.openai": {
+            "interface": {
+                "displayName": "Demo",
+                "shortDescription": "A demo plugin",
+                "longDescription": "Skills used as a fixture.",
+                "developerName": "Example",
+                "category": "Developer Tools",
+                "capabilities": ["Check notes"],
+                "supportURL": "https://example.com/support",
+                "defaultPrompt": ["Check my notes"],
+                "composerIcon": "./assets/icon.png",
+                "logo": "./assets/icon.png",
+            }
+        }
+    },
+}
+
+
+def png_header(width, height):
+    """The first 24 bytes of a PNG, which is all the checker reads."""
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + b"\x00\x00\x00\x0dIHDR"
+        + width.to_bytes(4, "big")
+        + height.to_bytes(4, "big")
+    )
+
+
+def add_portable_plugin(root, manifest=None, icon=(64, 64)):
+    root = Path(root)
+    write(root / "plugin.json", json.dumps(manifest or VALID_PORTABLE, indent=2))
+    icon_path = root / "assets" / "icon.png"
+    icon_path.parent.mkdir(parents=True, exist_ok=True)
+    icon_path.write_bytes(png_header(*icon))
+    return root
+
+
+def portable_with(**interface):
+    manifest = json.loads(json.dumps(VALID_PORTABLE))
+    manifest["extensions"]["com.openai"]["interface"].update(interface)
+    return manifest
+
+
 def build_valid_repo(root):
     root = Path(root)
     write(root / "README.md", VALID_README)
@@ -340,6 +388,63 @@ class CheckSkillTests(unittest.TestCase):
             )
             problems = self.run_root(root)
             self.assert_has_error(problems, "semver")
+
+    def test_valid_portable_plugin_passes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = add_portable_plugin(build_valid_repo(tmp))
+            problems = self.run_root(root)
+            errors = [p for p in problems if p.level == "error"]
+            self.assertEqual(errors, [], formatted(self.checker, problems))
+
+    def test_portable_version_must_match(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = json.loads(json.dumps(VALID_PORTABLE))
+            manifest["version"] = "1.1.0"
+            root = add_portable_plugin(build_valid_repo(tmp), manifest)
+            problems = self.run_root(root)
+            self.assert_has_error(problems, "1.1.0")
+
+    def test_portable_unknown_top_level_key(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = json.loads(json.dumps(VALID_PORTABLE))
+            manifest["hooks"] = "./hooks.json"
+            root = add_portable_plugin(build_valid_repo(tmp), manifest)
+            problems = self.run_root(root)
+            self.assert_has_error(problems, "'hooks' is not in the schema")
+
+    def test_portable_display_name_too_long(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = portable_with(displayName="A display name over thirty chars")
+            root = add_portable_plugin(build_valid_repo(tmp), manifest)
+            problems = self.run_root(root)
+            self.assert_has_error(problems, "interface.displayName")
+
+    def test_portable_http_url_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = portable_with(supportURL="http://example.com/support")
+            root = add_portable_plugin(build_valid_repo(tmp), manifest)
+            problems = self.run_root(root)
+            self.assert_has_error(problems, "HTTPS")
+
+    def test_portable_too_many_prompts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = portable_with(defaultPrompt=["a", "b", "c", "d"])
+            root = add_portable_plugin(build_valid_repo(tmp), manifest)
+            problems = self.run_root(root)
+            self.assert_has_error(problems, "defaultPrompt")
+
+    def test_portable_missing_icon(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = portable_with(logo="./assets/logo.png")
+            root = add_portable_plugin(build_valid_repo(tmp), manifest)
+            problems = self.run_root(root)
+            self.assert_has_error(problems, "./assets/logo.png not found")
+
+    def test_portable_icon_must_be_square(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = add_portable_plugin(build_valid_repo(tmp), icon=(64, 32))
+            problems = self.run_root(root)
+            self.assert_has_error(problems, "64x32")
 
     def test_place_files_missing_target(self):
         with tempfile.TemporaryDirectory() as tmp:

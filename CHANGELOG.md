@@ -6,6 +6,17 @@ All notable changes to this project are listed here. Versions follow
 
 ## [Unreleased]
 
+### Added
+
+- **A Codex and ChatGPT plugin.** A portable `plugin.json` at the repo root, with the
+  `extensions.com.openai` listing details, packages the three skills for Codex and the
+  ChatGPT / Codex Plugins Directory. `.agents/plugins/marketplace.json` lets Codex install
+  it with `codex plugin add beautiful-rust@beautiful-rust`.
+  `scripts/package-openai-plugin.py` builds the directory upload without the eval cases,
+  and `scripts/check-skill.py` now checks the manifest against OpenAI's field limits and
+  keeps its version in step with the Claude Code manifest. `PRIVACY.md` states that the
+  skills collect nothing. Requested by @Castor6 in #7.
+
 ## [1.5.0] - 2026-10-30
 
 Bevy support, a Claude Code vs Codex benchmark, and every Rust example compiled in CI.

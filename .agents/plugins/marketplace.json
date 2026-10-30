@@ -1,0 +1,20 @@
+{
+  "name": "beautiful-rust",
+  "interface": {
+    "displayName": "Beautiful Rust"
+  },
+  "plugins": [
+    {
+      "name": "beautiful-rust",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

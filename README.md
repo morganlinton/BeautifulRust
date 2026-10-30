@@ -134,6 +134,19 @@ This installs all three skills. They appear as `/beautiful-rust:rust-best-practi
 call them, since they trigger on their own. To try it for one session without installing, clone the repo
 and run `claude --plugin-dir ./BeautifulRust`.
 
+### OpenAI Codex
+
+Install it as a plugin:
+
+```bash
+codex plugin marketplace add morganlinton/BeautifulRust
+codex plugin add beautiful-rust@beautiful-rust
+```
+
+This installs all three skills as `beautiful-rust:rust-best-practices`,
+`beautiful-rust:rust-review`, and `beautiful-rust:rust-port`. The same package works in
+the ChatGPT desktop app.
+
 ### GitHub Copilot
 
 With GitHub CLI 2.90 or later:
@@ -155,7 +168,7 @@ gemini skills install https://github.com/morganlinton/BeautifulRust --path skill
 gemini skills install https://github.com/morganlinton/BeautifulRust --path skills/rust-port
 ```
 
-### OpenAI Codex, Cursor, or anything else: copy the folder
+### Cursor or anything else: copy the folder
 
 Clone the repo and copy the three skill folders into your agent's skills directory.
 Most agents now read the shared `.agents/skills/` location:
@@ -293,8 +306,12 @@ it while coding:
 ```
 BeautifulRust/
 ├── .claude-plugin/
-│   ├── plugin.json         plugin manifest
+│   ├── plugin.json         Claude Code plugin manifest
 │   └── marketplace.json    lets this repo act as its own marketplace
+├── .agents/plugins/
+│   └── marketplace.json    the same, for Codex
+├── plugin.json             Codex and ChatGPT plugin manifest
+├── assets/icon.png         plugin icon for Codex and ChatGPT
 ├── skills/
 │   ├── rust-best-practices/   writing skill
 │   │   ├── SKILL.md
@@ -314,13 +331,15 @@ BeautifulRust/
 │   ├── check-skill.py         validates skills, evals, and manifests
 │   ├── check-lints.sh         proves every lint in the table fires
 │   ├── check-examples.py      compiles every Rust example in the docs
-│   └── examples.json          context that lets fragment examples compile
+│   ├── examples.json          context that lets fragment examples compile
+│   └── package-openai-plugin.py   builds the ChatGPT / Codex directory ZIP
 ├── benchmarks/
 │   └── cross-agent-2026-10/   Claude Code vs Codex, with and without the skills
 ├── examples/
 │   └── review-inventory.md    a real review report
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
+├── PRIVACY.md
 └── README.md
 ```
 
@@ -360,11 +379,18 @@ Claude model.
 
 ## Updating
 
-Edit the skill, bump `version` in `.claude-plugin/plugin.json`, commit, and push.
-Claude Code plugin users pick up the new version with:
+Edit the skill, bump `version` in both `.claude-plugin/plugin.json` and `plugin.json`
+(the checker fails if they differ), commit, and push. Claude Code plugin users pick up the
+new version with:
 
 ```bash
 claude plugin update beautiful-rust
+```
+
+Codex users refresh the marketplace with:
+
+```bash
+codex plugin marketplace upgrade beautiful-rust
 ```
 
 Anyone who copied the folder or used an installer re-runs the install command. Record
@@ -380,6 +406,19 @@ python3 scripts/check-skill.py
 python3 scripts/check-examples.py
 claude plugin validate .
 ```
+
+To publish a release to the ChatGPT / Codex Plugins Directory, update `release_notes` in
+`plugin.json`, then build the upload:
+
+```bash
+python3 scripts/package-openai-plugin.py
+```
+
+This writes `dist/beautiful-rust-<version>.zip` with the manifest, the skills and their
+references, the icon, the license, and the privacy policy, but not the eval cases. Upload
+it at [platform.openai.com/plugins](https://platform.openai.com/plugins) from a verified
+developer account, as described in OpenAI's
+[submission guide](https://developers.openai.com/plugins/deploy/submission).
 
 ## Contributing
 

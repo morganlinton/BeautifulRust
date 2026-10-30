@@ -47,6 +47,40 @@ MAX_DESC = 1024
 MAX_COMPAT = 500
 MAX_BODY_LINES = 500
 
+# The portable plugin.json read by Codex and the ChatGPT / Codex Plugins
+# Directory. Limits are from developers.openai.com/plugins/deploy/submission.
+PORTABLE_SCHEMA = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
+PORTABLE_KEYS = {
+    "$schema",
+    "name",
+    "version",
+    "description",
+    "author",
+    "homepage",
+    "repository",
+    "license",
+    "keywords",
+    "extensions",
+}
+PORTABLE_NAME_RE = re.compile(r"^(?!.*(?:--|\.\.))[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$")
+OPENAI_TEXT_LIMITS = (
+    ("displayName", 30),
+    ("shortDescription", 30),
+    ("longDescription", 4000),
+    ("developerName", 80),
+    ("category", 80),
+)
+OPENAI_URL_KEYS = ("websiteURL", "supportURL", "privacyPolicyURL", "termsOfServiceURL")
+OPENAI_ICON_KEYS = ("composerIcon", "logo", "composerIconDark", "logoDark")
+OPENAI_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".svg"}
+HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+MAX_OPENAI_IMAGE_BYTES = 5 * 1024 * 1024
+MIN_ICON_SIDE = 48
+MAX_CAPABILITIES = 20
+MAX_CAPABILITY = 120
+MAX_PROMPTS = 3
+MAX_PROMPT = 128
+
 
 @dataclass(frozen=True)
 class Problem:
@@ -419,9 +453,12 @@ class Checker:
         market = self.root / ".claude-plugin" / "marketplace.json"
         changelog = self.root / "CHANGELOG.md"
         readme = self.root / "README.md"
-        version = self._check_plugin_files(plugin, market)
+        name, version = self._check_plugin_files(plugin, market)
         if version:
             self._check_changelog(changelog, version)
+        portable = self.root / "plugin.json"
+        if portable.is_file():
+            self._check_portable_plugin(portable, name, version)
         skills = self._skill_dirs()
         if not skills:
             self.add(self.root / "skills", 1, "no SKILL.md found under skills/")
@@ -489,7 +526,9 @@ class Checker:
     ) -> int:
         return locs.get(keys, default)
 
-    def _check_plugin_files(self, plugin_path: Path, market_path: Path) -> Optional[str]:
+    def _check_plugin_files(
+        self, plugin_path: Path, market_path: Path
+    ) -> Tuple[Optional[str], Optional[str]]:
         plugin = self._load_json(plugin_path)
         market = self._load_json(market_path)
         version = None
@@ -534,7 +573,154 @@ class Checker:
                             "plugin name %r does not match %r in plugin.json"
                             % (entry_name, plugin_name),
                         )
-        return version if isinstance(version, str) else None
+        return plugin_name, version if isinstance(version, str) else None
+
+    def _check_portable_plugin(
+        self, path: Path, name: Optional[str], version: Optional[str]
+    ) -> None:
+        data = self._load_json(path)
+        if not isinstance(data, dict):
+            if data is not None:
+                self.add(path, 1, "must be a JSON object")
+            return
+        for key in sorted(set(data) - PORTABLE_KEYS):
+            self.add(
+                path, _json_key_line(path, key), "key %r is not in the schema" % key
+            )
+        if data.get("$schema") != PORTABLE_SCHEMA:
+            self.add(
+                path,
+                _json_key_line(path, "$schema"),
+                "$schema must be %s" % PORTABLE_SCHEMA,
+            )
+        portable_name = data.get("name")
+        if not isinstance(portable_name, str) or not PORTABLE_NAME_RE.match(
+            portable_name
+        ):
+            self.add(
+                path, _json_key_line(path, "name"), "name %r is not valid" % portable_name
+            )
+        elif name and portable_name != name:
+            self.add(
+                path,
+                _json_key_line(path, "name"),
+                "name %r does not match %r in .claude-plugin/plugin.json"
+                % (portable_name, name),
+            )
+        if version and data.get("version") != version:
+            self.add(
+                path,
+                _json_key_line(path, "version"),
+                "version %r does not match %r in .claude-plugin/plugin.json"
+                % (data.get("version"), version),
+            )
+        extensions = data.get("extensions")
+        openai = extensions.get("com.openai") if isinstance(extensions, dict) else None
+        if not isinstance(openai, dict):
+            self.add(path, 1, "missing extensions.com.openai")
+            return
+        interface = openai.get("interface")
+        if not isinstance(interface, dict):
+            self.add(path, 1, "missing extensions.com.openai.interface")
+            return
+        self._check_openai_interface(path, interface)
+
+    def _check_openai_interface(self, path: Path, interface: Dict[str, Any]) -> None:
+        for key, limit in OPENAI_TEXT_LIMITS:
+            value = interface.get(key)
+            if not isinstance(value, str) or not value.strip():
+                self.add(path, 1, "interface.%s is required" % key)
+            elif len(value) > limit:
+                self.add(
+                    path,
+                    _json_key_line(path, key),
+                    "interface.%s is %d characters; the limit is %d"
+                    % (key, len(value), limit),
+                )
+        for key in OPENAI_URL_KEYS:
+            value = interface.get(key)
+            if value is None:
+                continue
+            if not isinstance(value, str) or not value.startswith("https://"):
+                self.add(
+                    path,
+                    _json_key_line(path, key),
+                    "interface.%s must be an HTTPS URL" % key,
+                )
+        capabilities = interface.get("capabilities")
+        if not isinstance(capabilities, list):
+            self.add(path, 1, "interface.capabilities must be a list")
+        else:
+            if len(capabilities) > MAX_CAPABILITIES:
+                self.add(
+                    path,
+                    _json_key_line(path, "capabilities"),
+                    "interface.capabilities has %d items; the limit is %d"
+                    % (len(capabilities), MAX_CAPABILITIES),
+                )
+            for item in capabilities:
+                if not isinstance(item, str) or len(item) > MAX_CAPABILITY:
+                    self.add(
+                        path,
+                        _json_key_line(path, "capabilities"),
+                        "each capability must be a string of at most %d characters"
+                        % MAX_CAPABILITY,
+                    )
+        prompts = interface.get("defaultPrompt")
+        if prompts is not None:
+            if isinstance(prompts, str):
+                prompts = [prompts]
+            if (
+                not isinstance(prompts, list)
+                or len(prompts) > MAX_PROMPTS
+                or len(set(map(str, prompts))) != len(prompts)
+                or any(not isinstance(p, str) or len(p) > MAX_PROMPT for p in prompts)
+            ):
+                self.add(
+                    path,
+                    _json_key_line(path, "defaultPrompt"),
+                    "interface.defaultPrompt must be up to %d unique strings of at "
+                    "most %d characters" % (MAX_PROMPTS, MAX_PROMPT),
+                )
+        for key in ("brandColor", "brandColorDark"):
+            value = interface.get(key)
+            if value is None:
+                continue
+            if not isinstance(value, str) or not HEX_COLOR_RE.match(value):
+                self.add(
+                    path, _json_key_line(path, key), "interface.%s must be #RRGGBB" % key
+                )
+        for key in OPENAI_ICON_KEYS:
+            value = interface.get(key)
+            if value is None:
+                if key in ("composerIcon", "logo"):
+                    self.add(path, 1, "interface.%s is required" % key)
+                continue
+            self._check_openai_icon(path, key, value)
+
+    def _check_openai_icon(self, path: Path, key: str, value: Any) -> None:
+        line = _json_key_line(path, key)
+        if not isinstance(value, str) or not value.startswith("./"):
+            self.add(path, line, "interface.%s must be a ./ path in the plugin" % key)
+            return
+        image = (path.parent / value).resolve()
+        if path.parent.resolve() not in image.parents or not image.is_file():
+            self.add(path, line, "interface.%s: %s not found" % (key, value))
+            return
+        if image.suffix.lower() not in OPENAI_IMAGE_SUFFIXES:
+            self.add(path, line, "interface.%s must be PNG, JPEG, WebP, or SVG" % key)
+        if image.stat().st_size > MAX_OPENAI_IMAGE_BYTES:
+            self.add(path, line, "interface.%s is larger than 5 MiB" % key)
+        size = _png_size(image)
+        if size is not None:
+            width, height = size
+            if width != height or width < MIN_ICON_SIDE:
+                self.add(
+                    path,
+                    line,
+                    "interface.%s is %dx%d; icons must be square and at least %dpx"
+                    % (key, width, height, MIN_ICON_SIDE),
+                )
 
     def _load_json(self, path: Path) -> Any:
         text = self._read(path)
@@ -933,6 +1119,18 @@ def _json_key_line(path: Path, key: str) -> int:
     if not match:
         return 1
     return text[: match.start()].count("\n") + 1
+
+
+def _png_size(path: Path) -> Optional[Tuple[int, int]]:
+    """Width and height from a PNG's IHDR chunk, or None for other formats."""
+    try:
+        with path.open("rb") as f:
+            head = f.read(24)
+    except OSError:
+        return None
+    if len(head) < 24 or head[:8] != b"\x89PNG\r\n\x1a\n" or head[12:16] != b"IHDR":
+        return None
+    return int.from_bytes(head[16:20], "big"), int.from_bytes(head[20:24], "big")
 
 
 def check_repo(root: Path) -> List[Problem]:

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "beautiful-rust",
+  "version": "1.5.0",
+  "description": "Write, review, port, and enforce idiomatic Rust: three skills distilled from the Google Rust Style Guide, the Rust API Guidelines, Effective Rust, Rust Design Patterns, and Microsoft's Pragmatic Rust Guidelines, plus a drop-in clippy config.",
+  "author": {
+    "name": "Morgan Linton",
+    "url": "https://github.com/morganlinton"
+  },
+  "homepage": "https://github.com/morganlinton/BeautifulRust",
+  "repository": "https://github.com/morganlinton/BeautifulRust",
+  "license": "MIT",
+  "keywords": [
+    "api-design",
+    "best-practices",
+    "clippy",
+    "code-review",
+    "migration",
+    "porting",
+    "rust",
+    "skill",
+    "style-guide"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Beautiful Rust",
+        "shortDescription": "Write, review, and port Rust",
+        "longDescription": "Three skills for Rust developers, distilled from the Google Rust Style Guide, the Rust API Guidelines, Effective Rust, Rust Design Patterns, and Microsoft's Pragmatic Rust Guidelines.\n\nrust-best-practices guides new Rust code: error handling, API design, ownership, traits, async, unsafe and FFI, tests, and docs. It includes guidance for the Bevy game engine.\n\nrust-review reviews a file, crate, or diff and returns a prioritized report. Every finding cites a file and line, the rule it breaks, and the smallest fix.\n\nrust-port ports C, C++, Python, Go, JavaScript, or TypeScript to idiomatic Rust with the same behavior. It ports the original tests first and writes a PORTING.md that lists every deliberate difference.\n\nThe skills contain instructions and reference text only. They make no network calls and collect no data. When a Rust toolchain is available, the skills run cargo fmt, cargo clippy, and cargo test on your project; without one, they work from the code alone. A drop-in clippy config is available in the GitHub repository.",
+        "developerName": "Morgan Linton",
+        "category": "Developer Tools",
+        "capabilities": [
+          "Write idiomatic Rust",
+          "Review Rust code with cited rules",
+          "Port code to Rust with the same behavior"
+        ],
+        "websiteURL": "https://github.com/morganlinton/BeautifulRust",
+        "supportURL": "https://github.com/morganlinton/BeautifulRust/issues",
+        "privacyPolicyURL": "https://github.com/morganlinton/BeautifulRust/blob/main/PRIVACY.md",
+        "defaultPrompt": [
+          "Review this Rust crate and list what to fix first",
+          "Port this Python module to idiomatic Rust",
+          "Write a Rust function that parses this config format"
+        ],
+        "brandColor": "#B7410E",
+        "composerIcon": "./assets/icon.png",
+        "logo": "./assets/icon.png"
+      },
+      "publication": {
+        "release_notes": "Bevy support, a Claude Code vs Codex benchmark, and every Rust example compiled in CI."
+      }
+    }
+  }
+}
