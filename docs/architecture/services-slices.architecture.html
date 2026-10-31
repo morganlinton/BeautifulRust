@@ -5206,9 +5206,11 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <rect width="100%" height="100%" fill="url(#grid)" />
 
         <!-- Boundaries (behind everything) -->
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="0" data-composition-frame-label="Feature slices" x="150" y="190" width="440" height="110" rx="12" class="c-region" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="0" data-composition-frame-label="Feature slices — never import each other; a new feature is a new slice, shared behavior moves down to ports/core" x="150" y="190" width="440" height="110" rx="12" class="c-region" stroke-width="1"/>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="1" data-composition-frame-label="Composition root" x="390" y="10" width="210" height="114" rx="12" class="c-region" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="1" data-composition-frame-label="Composition root — the only wiring site (AppState::from_env)" x="377.999982" y="10" width="234.000036" height="114" rx="12" class="c-region" stroke-width="1"/>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="2" data-composition-frame-label="core — zero-I/O wall: no tokio · axum · sqlx · no async" x="386.9999835" y="370" width="216.000033" height="110" rx="12" class="c-region" stroke-width="1"/>
 
         <!-- Connection paths (before components for correct z-order) -->
         <g data-graph-role="automatic-crossover" style="--step:0">
@@ -5225,7 +5227,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         </g>
         <g data-graph-role="automatic-crossover" style="--step:3">
           <path data-graph-role="automatic-crossover-underlay" d="M 245 280 L 245 400" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="authslice" data-edge-to="portsbox" data-edge-label="Arc&lt;dyn repo&gt;" data-edge-key="3" data-edge-id="s-4" data-composition-points="245,280;245,400" data-composition-crossover="halo" data-composition-independent="true" d="M 245 280 L 245 400" class="a-default" data-animate="edge" style="--step:3" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-edge-from="authslice" data-edge-to="portsbox" data-edge-label="Arc&lt;dyn Trait&gt; — port seam, never Pg*" data-edge-key="3" data-edge-id="s-4" data-composition-points="245,280;245,400" data-composition-crossover="halo" data-composition-independent="true" d="M 245 280 L 245 400" class="a-default" data-animate="edge" style="--step:3" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:4">
           <path data-graph-role="automatic-crossover-underlay" d="M 310 430 L 430 430" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
@@ -5245,8 +5247,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         </g>
 
         <!-- Components -->
-        <g id="node-apiroot" data-node-id="apiroot" data-node-label="api composition root" tabindex="0" role="button" aria-label="Focus api composition root, state · router · config, Composition root" aria-pressed="false" data-node-kind="backend" data-node-sublabel="state · router · config" data-node-context="Composition root">
-          <title>api composition root · state · router · config · Composition root</title>
+        <g id="node-apiroot" data-node-id="apiroot" data-node-label="api composition root" tabindex="0" role="button" aria-label="Focus api composition root, state · router · config, Composition root — the only wiring site (AppState::from_env)" aria-pressed="false" data-node-kind="backend" data-node-sublabel="state · router · config" data-node-context="Composition root — the only wiring site (AppState::from_env)">
+          <title>api composition root · state · router · config · Composition root — the only wiring site (AppState::from_env)</title>
           <rect x="420" y="40" width="150" height="64" rx="8" class="c-mask"/>
           <rect x="420" y="40" width="150" height="64" rx="8" class="c-backend" data-animate="node" style="--step:0" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(426 46) scale(0.6875)">
@@ -5256,8 +5258,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <text data-detail="context" x="495" y="86" class="t-muted" font-size="9" text-anchor="middle">state · router · config</text>
         </g>
 
-        <g id="node-authslice" data-node-id="authslice" data-node-label="auth slice" tabindex="0" role="button" aria-label="Focus auth slice, signup · session · oauth, Feature slices" aria-pressed="false" data-node-kind="backend" data-node-sublabel="signup · session · oauth" data-node-context="Feature slices">
-          <title>auth slice · signup · session · oauth · Feature slices</title>
+        <g id="node-authslice" data-node-id="authslice" data-node-label="auth slice" tabindex="0" role="button" aria-label="Focus auth slice, signup · session · oauth, Feature slices — never import each other; a new feature is a new slice, shared behavior moves down to ports/core" aria-pressed="false" data-node-kind="backend" data-node-sublabel="signup · session · oauth" data-node-context="Feature slices — never import each other; a new feature is a new slice, shared behavior moves down to ports/core">
+          <title>auth slice · signup · session · oauth · Feature slices — never import each other; a new feature is a new slice, shared behavior moves down to ports/core</title>
           <rect x="180" y="220" width="130" height="60" rx="8" class="c-mask"/>
           <rect x="180" y="220" width="130" height="60" rx="8" class="c-backend" data-animate="node" style="--step:1" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(186 226) scale(0.6875)">
@@ -5267,8 +5269,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <text data-detail="context" x="245" y="264" class="t-muted" font-size="8.4" text-anchor="middle">signup · session · oauth</text>
         </g>
 
-        <g id="node-widgetslice" data-node-id="widgetslice" data-node-label="widgets slice" tabindex="0" role="button" aria-label="Focus widgets slice, CRUD · SSE feed, Feature slices" aria-pressed="false" data-node-kind="backend" data-node-sublabel="CRUD · SSE feed" data-node-context="Feature slices">
-          <title>widgets slice · CRUD · SSE feed · Feature slices</title>
+        <g id="node-widgetslice" data-node-id="widgetslice" data-node-label="widgets slice" tabindex="0" role="button" aria-label="Focus widgets slice, CRUD · SSE feed, Feature slices — never import each other; a new feature is a new slice, shared behavior moves down to ports/core" aria-pressed="false" data-node-kind="backend" data-node-sublabel="CRUD · SSE feed" data-node-context="Feature slices — never import each other; a new feature is a new slice, shared behavior moves down to ports/core">
+          <title>widgets slice · CRUD · SSE feed · Feature slices — never import each other; a new feature is a new slice, shared behavior moves down to ports/core</title>
           <rect x="430" y="220" width="130" height="60" rx="8" class="c-mask"/>
           <rect x="430" y="220" width="130" height="60" rx="8" class="c-backend" data-animate="node" style="--step:2" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(436 226) scale(0.6875)">
@@ -5301,8 +5303,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <text data-detail="context" x="245" y="444" class="t-muted" font-size="7.2" text-anchor="middle">traits · Pg adapters · mocks</text>
         </g>
 
-        <g id="node-corebox" data-node-id="corebox" data-node-label="core" tabindex="0" role="button" aria-label="Focus core, domain types · zero I/O, Architecture component" aria-pressed="false" data-node-kind="backend" data-node-sublabel="domain types · zero I/O" data-node-context="Architecture component">
-          <title>core · domain types · zero I/O · Architecture component</title>
+        <g id="node-corebox" data-node-id="corebox" data-node-label="core" tabindex="0" role="button" aria-label="Focus core, domain types · zero I/O, core — zero-I/O wall: no tokio · axum · sqlx · no async" aria-pressed="false" data-node-kind="backend" data-node-sublabel="domain types · zero I/O" data-node-context="core — zero-I/O wall: no tokio · axum · sqlx · no async">
+          <title>core · domain types · zero I/O · core — zero-I/O wall: no tokio · axum · sqlx · no async</title>
           <rect x="430" y="400" width="130" height="60" rx="8" class="c-mask"/>
           <rect x="430" y="400" width="130" height="60" rx="8" class="c-backend" data-animate="node" style="--step:5" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(436 406) scale(0.6875)">
@@ -5359,9 +5361,9 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <rect x="667" y="134" width="58" height="14" rx="3" class="c-mask"/>
           <text x="696" y="144" class="t-edge-default" font-size="8" text-anchor="middle">middleware</text>
         </g>
-        <g data-detail="context" data-edge-from="authslice" data-edge-to="portsbox" data-edge-label="Arc&lt;dyn repo&gt;" data-edge-key="3" data-edge-id="s-4">
-          <rect x="166.60000000000002" y="333" width="72.4" height="14" rx="3" class="c-mask"/>
-          <text x="202.8" y="343" class="t-edge-default" font-size="8" text-anchor="middle">Arc&lt;dyn repo&gt;</text>
+        <g data-detail="context" data-edge-from="authslice" data-edge-to="portsbox" data-edge-label="Arc&lt;dyn Trait&gt; — port seam, never Pg*" data-edge-key="3" data-edge-id="s-4">
+          <rect x="51.39999999999999" y="333" width="187.6" height="14" rx="3" class="c-mask"/>
+          <text x="145.2" y="343" class="t-edge-default" font-size="8" text-anchor="middle">Arc&lt;dyn Trait&gt; — port seam, never Pg*</text>
         </g>
         <g data-detail="context" data-edge-from="portsbox" data-edge-to="corebox" data-edge-label="domain types" data-edge-key="4" data-edge-id="s-5">
           <rect x="336.2" y="410" width="67.6" height="14" rx="3" class="c-mask"/>
@@ -5381,14 +5383,19 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         </g>
 
         <!-- Boundary labels (foreground masks keep routes out of titles) -->
-        <g data-graph-role="structural-frame-label" data-composition-frame-id="0" data-composition-frame-kind="region" data-composition-frame-label="Feature slices">
-          <rect data-graph-role="structural-frame-label-mask" x="154" y="200" width="85.6" height="16" rx="3" class="c-mask"/>
-          <text data-boundary-label="" x="158" y="213" class="t-cloud" font-size="9" font-weight="600">Feature slices</text>
+        <g data-graph-role="structural-frame-label" data-composition-frame-id="0" data-composition-frame-kind="region" data-composition-frame-label="Feature slices — never import each other; a new feature is a new slice, shared behavior moves down to ports/core">
+          <rect data-graph-role="structural-frame-label-mask" x="154" y="200" width="431.99999999999994" height="16" rx="3" class="c-mask"/>
+          <text data-boundary-label="" x="158" y="210.2797619047619" class="t-cloud" font-size="6.279761904761904" font-weight="600">Feature slices — never import each other; a new feature is a new slice, shared behavior moves down to ports/core</text>
         </g>
 
-        <g data-graph-role="structural-frame-label" data-composition-frame-id="1" data-composition-frame-kind="region" data-composition-frame-label="Composition root">
-          <rect data-graph-role="structural-frame-label-mask" x="394" y="20" width="96.39999999999999" height="16" rx="3" class="c-mask"/>
-          <text data-boundary-label="" x="398" y="33" class="t-cloud" font-size="9" font-weight="600">Composition root</text>
+        <g data-graph-role="structural-frame-label" data-composition-frame-id="1" data-composition-frame-kind="region" data-composition-frame-label="Composition root — the only wiring site (AppState::from_env)">
+          <rect data-graph-role="structural-frame-label-mask" x="381.999982" y="20" width="226.000036" height="16" rx="3" class="c-mask"/>
+          <text data-boundary-label="" x="385.999982" y="30.000001" class="t-cloud" font-size="6.000001" font-weight="600">Composition root — the only wiring site (AppState::from_env)</text>
+        </g>
+
+        <g data-graph-role="structural-frame-label" data-composition-frame-id="2" data-composition-frame-kind="region" data-composition-frame-label="core — zero-I/O wall: no tokio · axum · sqlx · no async">
+          <rect data-graph-role="structural-frame-label-mask" x="390.9999835" y="380" width="208.000033" height="16" rx="3" class="c-mask"/>
+          <text data-boundary-label="" x="394.9999835" y="390.000001" class="t-cloud" font-size="6.000001" font-weight="600">core — zero-I/O wall: no tokio · axum · sqlx · no async</text>
         </g>
 
         <!-- Legend -->
@@ -5607,6 +5614,19 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <ul>
           <li>slices hold Arc&lt;dyn Trait&gt; repos behind ports; only the composition root names concrete Pg adapters</li>
           <li>SQL lives only in ports/src/adapters/*_pg.rs as runtime-checked sqlx::query strings</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot amber"></div>
+          <h3>Machine gates on the rings</h3>
+        </div>
+        <ul>
+          <li>[workspace.lints]: lints/lints.toml pairs with lints/clippy.toml — scripts/check-lints.sh proves every lint fires in the check crate</li>
+          <li>unsafe_code = &quot;forbid&quot; — a hard wall no attribute reopens; #[allow] muting a gate is review-flagged</li>
+          <li>tests/contracts pins the pairing: table byte-identical in lints/check, clippy.toml + harness markers match</li>
+          <li>CI tests job runs unit · contracts · integration · e2e by unittest discover</li>
         </ul>
       </div>
 

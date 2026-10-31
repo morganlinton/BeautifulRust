@@ -137,7 +137,7 @@
   "boundaries": [
     {
       "kind": "region",
-      "label": "Feature slices",
+      "label": "Feature slices — never import each other; a new feature is a new slice, shared behavior moves down to ports/core",
       "wraps": [
         "authslice",
         "widgetslice"
@@ -145,9 +145,16 @@
     },
     {
       "kind": "region",
-      "label": "Composition root",
+      "label": "Composition root — the only wiring site (AppState::from_env)",
       "wraps": [
         "apiroot"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "core — zero-I/O wall: no tokio · axum · sqlx · no async",
+      "wraps": [
+        "corebox"
       ]
     }
   ],
@@ -174,7 +181,7 @@
       "id": "s-4",
       "from": "authslice",
       "to": "portsbox",
-      "label": "Arc<dyn repo>"
+      "label": "Arc<dyn Trait> — port seam, never Pg*"
     },
     {
       "id": "s-5",
@@ -226,6 +233,16 @@
       "items": [
         "slices hold Arc<dyn Trait> repos behind ports; only the composition root names concrete Pg adapters",
         "SQL lives only in ports/src/adapters/*_pg.rs as runtime-checked sqlx::query strings"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Machine gates on the rings",
+      "items": [
+        "[workspace.lints]: lints/lints.toml pairs with lints/clippy.toml — scripts/check-lints.sh proves every lint fires in the check crate",
+        "unsafe_code = \"forbid\" — a hard wall no attribute reopens; #[allow] muting a gate is review-flagged",
+        "tests/contracts pins the pairing: table byte-identical in lints/check, clippy.toml + harness markers match",
+        "CI tests job runs unit · contracts · integration · e2e by unittest discover"
       ]
     },
     {

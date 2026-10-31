@@ -5607,12 +5607,14 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       <div class="card">
         <div class="card-header">
           <div class="card-dot rose"></div>
-          <h3>Quality gates</h3>
+          <h3>CI contract gates (.github/workflows/check.yml)</h3>
         </div>
         <ul>
-          <li>just ci = fmt · clippy pedantic -D warnings · nextest</li>
-          <li>unsafe_code = forbid workspace-wide; SQL lives only in ports/adapters</li>
-          <li>rust-toolchain pinned; single stripped release binary</li>
+          <li>check → scripts/check-skill.py; lints → scripts/check-lints.sh proves every lint in lints/lints.toml fires</li>
+          <li>examples → check-examples.py compiles every Rust example; tests → unittest discover over unit · contracts · integration · e2e</li>
+          <li>tests/contracts pins the pairing: lints.toml + clippy.toml + lints/check harness stay one three-file unit</li>
+          <li>The contracts below are **unbreakable and non-waivable**: developers cannot opt out, and neither can you. When a gate fires, the fix is to re-cut the layout — never to weaken or delete the lints, and never to silence it with `#[allow]` or a lazy workaround.</li>
+          <li>review flags any deleted lints entry or #[allow] on the diff itself, loudly — a broken contract is an automatic Must fix</li>
         </ul>
       </div>
     </div>

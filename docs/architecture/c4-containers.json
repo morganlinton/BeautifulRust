@@ -272,11 +272,13 @@
     },
     {
       "dot": "rose",
-      "title": "Quality gates",
+      "title": "CI contract gates (.github/workflows/check.yml)",
       "items": [
-        "just ci = fmt · clippy pedantic -D warnings · nextest",
-        "unsafe_code = forbid workspace-wide; SQL lives only in ports/adapters",
-        "rust-toolchain pinned; single stripped release binary"
+        "check → scripts/check-skill.py; lints → scripts/check-lints.sh proves every lint in lints/lints.toml fires",
+        "examples → check-examples.py compiles every Rust example; tests → unittest discover over unit · contracts · integration · e2e",
+        "tests/contracts pins the pairing: lints.toml + clippy.toml + lints/check harness stay one three-file unit",
+        "The contracts below are **unbreakable and non-waivable**: developers cannot opt out, and neither can you. When a gate fires, the fix is to re-cut the layout — never to weaken or delete the lints, and never to silence it with `#[allow]` or a lazy workaround.",
+        "review flags any deleted lints entry or #[allow] on the diff itself, loudly — a broken contract is an automatic Must fix"
       ]
     }
   ]
