@@ -31,6 +31,10 @@ the skill so the agent can consult the original reasoning when it needs to:
 
 Where the sources disagree, the skill picks a side and says why.
 
+<p align="center">
+  <img src="docs/architecture/overview.svg" alt="Architecture: clients reach the api composition root, which wires the auth, adminusers, and widgets slices; slices depend only on ports traits, adapters implement the traits, and core is a zero-I/O domain wall. Boundary gates mark the Cargo edge contract, the no-sibling-imports rule, the zero-dep core with unsafe_code forbid, and the non-waivable contracts; a CI row shows check-skill.py, check-lints.sh, check-examples.py, and tests/contracts.">
+</p>
+
 ## What it changes
 
 Asked for a small semver-parsing library, an agent without the skill produced working
@@ -280,6 +284,30 @@ copy of the table drifts from `lints/lints.toml`. `allow_attributes` and
 `allow_attributes_without_reason` need `rust-version = "1.81"` or later, because clippy
 switches them off for crates that can't use `#[expect]`.
 
+## What the libraries do and why
+
+The architecture contract in
+[`skills/rust-best-practices/SKILL.md`](skills/rust-best-practices/SKILL.md#architecture-contract-the-backend-rust-stack)
+pins a stack for backend repos: axum, tokio, and sqlx on Postgres, in a hexagonal
+crate workspace cut into vertical slices. The reasoning for each pinned library
+lives in [`skills/rust-best-practices/references/backend-rust-stack.md`](skills/rust-best-practices/references/backend-rust-stack.md);
+this is the compressed version.
+
+| Library | Why this one | What it gives the stack |
+|---|---|---|
+| axum | Handlers are plain `async fn` extractors, so the handler's single `IntoResponse` match stays the only place `core::Error` becomes an HTTP status. | Router, extractor model, and the `axum::serve` loop the composition root owns exclusively. |
+| tokio | The composition root owns the runtime and slices never call `block_on`; one runtime instead of a per-slice answer. | Worker-thread async, `spawn_blocking` for blocking calls, and plain `tokio::spawn` only for work explicitly marked as allowed to die with the process. |
+| sqlx | Compile-time checked SQL: `query_as!` is verified against the committed `.sqlx/` offline cache, so schema drift fails `just ci`, not a customer. | Postgres access with SQL owned only by `ports/src/adapters/`, mapping `sqlx::Error` once at the adapter. |
+| Postgres | Durability plus row-level locking without extra infrastructure. | The outbox table (`email_jobs`, claimed `FOR UPDATE SKIP LOCKED`) the loom worker claims and settles. |
+| async-trait | A bare `async fn` in a trait is not dyn-compatible, and the port seam needs trait objects. | `#[async_trait]` ports held as `Arc<dyn Trait>`, with the load-bearing `Send + Sync + 'static` bound. |
+| thiserror | Typed errors cross every ring; `anyhow` in the rings would erase the error surface. | The one `core::Error` enum; each adapter maps foreign errors into it at its own boundary. |
+| anyhow | Failing fast with a message is the contract at boot — and only there. | The composition root's `Config::from_env`: a missing or malformed var fails the deploy, not a request. |
+| tower-http | Middleware on axum's own stack instead of hand-rolled layers. | `TraceLayer`, which injects the request id that server-side error logging quotes. |
+| tracing (+ OTLP) | Structured events over `println!`, with the failure mode that compiles and emits nothing. | Subscriber installed once per binary; spans flow to the OTLP collector. |
+| argon2 | Password hashing with the pepper folded in at the hashing step. | argon2id over an HMAC-SHA256 pepper pre-hash in warden, failing one constant 401. |
+| HS256 JWT | Stateless tokens tied to the session row, so revoking the session revokes the token. | 15-minute access tokens with `jti == sessions.id`; refresh rotates in place and replay misses the CAS. |
+| criterion / divan | Measurement before optimization (SKILL.md §12, "Performance, in order"). | Benchmarks run with `std::hint::black_box` instead of timing by feel. |
+
 ## What the writing skill covers
 
 `skills/rust-best-practices/SKILL.md` is about 500 lines, organized so an agent can scan
@@ -337,6 +365,8 @@ BeautifulRust/
 │   └── cross-agent-2026-10/   Claude Code vs Codex, with and without the skills
 ├── examples/
 │   └── review-inventory.md    a real review report
+├── docs/
+│   └── architecture/          the overview.svg the README embeds, plus its workflow, sequence, C4, dataflow, and lifecycle diagram sources
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
 ├── PRIVACY.md

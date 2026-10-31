@@ -1,0 +1,196 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "beautifulrust Outbox Algorithm — email_jobs Delivery",
+    "quality_profile": "showcase",
+    "output": "docs/architecture/outbox-algorithm.workflow.html"
+  },
+  "lanes": [
+    {
+      "id": "writers",
+      "label": "Use-cases"
+    },
+    {
+      "id": "outbox",
+      "label": "Outbox"
+    },
+    {
+      "id": "drain",
+      "label": "Worker"
+    },
+    {
+      "id": "deliver",
+      "label": "Delivery"
+    },
+    {
+      "id": "ledger",
+      "label": "Ledger"
+    }
+  ],
+  "phases": [
+    {
+      "id": "q-enqueue",
+      "label": "Commit + enqueue",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "q-claim",
+      "label": "Claim + render",
+      "fromCol": 2,
+      "toCol": 3,
+      "variant": "emphasis"
+    },
+    {
+      "id": "q-settle",
+      "label": "Deliver + settle",
+      "fromCol": 4,
+      "toCol": 5
+    }
+  ],
+  "mainPath": [
+    "write",
+    "jobs",
+    "claim",
+    "render",
+    "send",
+    "settle"
+  ],
+  "nodes": [
+    {
+      "id": "write",
+      "lane": "writers",
+      "col": 0,
+      "type": "backend",
+      "label": "auth use-cases",
+      "sublabel": "user · code rows"
+    },
+    {
+      "id": "jobs",
+      "lane": "outbox",
+      "col": 1,
+      "type": "database",
+      "label": "email_jobs",
+      "sublabel": "same-tx INSERT"
+    },
+    {
+      "id": "claim",
+      "lane": "drain",
+      "col": 2,
+      "type": "database",
+      "label": "claim CTE",
+      "sublabel": "SKIP LOCKED · 5m lease"
+    },
+    {
+      "id": "render",
+      "lane": "drain",
+      "col": 3,
+      "type": "backend",
+      "label": "render mail",
+      "sublabel": "mailer::render"
+    },
+    {
+      "id": "send",
+      "lane": "deliver",
+      "col": 4,
+      "type": "cloud",
+      "label": "deliver",
+      "sublabel": "STARTTLS · console"
+    },
+    {
+      "id": "backoff",
+      "lane": "deliver",
+      "col": 2,
+      "type": "backend",
+      "label": "backoff",
+      "sublabel": "2^n min · ±10% jitter"
+    },
+    {
+      "id": "settle",
+      "lane": "ledger",
+      "col": 5,
+      "type": "database",
+      "label": "settle",
+      "sublabel": "sent · failed"
+    }
+  ],
+  "edges": [
+    {
+      "id": "o-1",
+      "from": "write",
+      "to": "jobs",
+      "route": "drop",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "o-2",
+      "from": "jobs",
+      "to": "claim",
+      "route": "drop",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "label": "poll 2s · batch 10",
+      "labelSegment": 1,
+      "labelDy": 12
+    },
+    {
+      "id": "o-3",
+      "from": "claim",
+      "to": "render",
+      "label": "due rows"
+    },
+    {
+      "id": "o-4",
+      "from": "render",
+      "to": "send",
+      "label": "rendered"
+    },
+    {
+      "id": "o-5",
+      "from": "send",
+      "to": "settle",
+      "label": "mark_sent"
+    },
+    {
+      "id": "o-6",
+      "from": "send",
+      "to": "backoff",
+      "label": "failed"
+    },
+    {
+      "id": "o-7",
+      "from": "backoff",
+      "to": "claim",
+      "label": "requeued 2^n"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Transactional enqueue",
+      "items": [
+        "auth use-cases INSERT email_jobs through the outbox_pg adapter inside the same sqlx transaction as the state change",
+        "no message broker: Postgres polling is the whole delivery contract"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Drain",
+      "items": [
+        "run_outbox_worker polls OUTBOX_POLL (2s) with batch OUTBOX_BATCH (10); a batch of 0 clamps to 16",
+        "the claim CTE takes queued-due rows plus sending rows older than the 5-minute lease",
+        "Console sender when OFFLINE or the SMTP host is empty, else STARTTLS SMTP"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Outcomes",
+      "items": [
+        "failure requeues with 2^n-minute backoff and ±10% jitter, deterministic per job + attempt",
+        "dead-letters to status failed at max_retries 3; the janitor purges expired sessions and code rows hourly"
+      ]
+    }
+  ]
+}

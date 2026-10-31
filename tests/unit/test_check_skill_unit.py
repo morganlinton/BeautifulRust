@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import subprocess
 import sys
@@ -11,25 +10,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+from tests._support import REPO_ROOT, load_script, write
+
 SCRIPT = REPO_ROOT / "scripts" / "check-skill.py"
-
-
-def load_checker():
-    spec = importlib.util.spec_from_file_location("check_skill", SCRIPT)
-    if spec is None or spec.loader is None:
-        raise RuntimeError("cannot load %s" % SCRIPT)
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = mod
-    spec.loader.exec_module(mod)
-    return mod
-
-
-def write(path, content):
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
-    return path
 
 
 VALID_SKILL = """\
@@ -180,10 +163,6 @@ def build_valid_repo(root):
     return root
 
 
-def messages(problems):
-    return [p.message for p in problems]
-
-
 def error_messages(problems):
     return [p.message for p in problems if p.level == "error"]
 
@@ -195,7 +174,7 @@ def formatted(checker, problems):
 class CheckSkillTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.checker = load_checker()
+        cls.checker = load_script("check-skill.py")
 
     def run_root(self, root):
         return self.checker.check_repo(Path(root))
@@ -529,31 +508,6 @@ class CheckSkillTests(unittest.TestCase):
             self.assertGreaterEqual(payload["error_count"], 1)
             self.assertIn("problems", payload)
             self.assertEqual(payload["problems"][0]["path"].count("\\"), 0)
-
-    def test_real_repo_passes(self):
-        problems = self.run_root(REPO_ROOT)
-        errors = [p for p in problems if p.level == "error"]
-        self.assertEqual(errors, [], formatted(self.checker, problems))
-        proc = subprocess.run(
-            [sys.executable, str(SCRIPT), str(REPO_ROOT)],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
-        self.assertRegex(proc.stdout.strip().splitlines()[-1], r"0 errors")
-
-    def test_real_repo_json_ok(self):
-        proc = subprocess.run(
-            [sys.executable, str(SCRIPT), "--json", str(REPO_ROOT)],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
-        payload = json.loads(proc.stdout)
-        self.assertTrue(payload["ok"])
-        self.assertEqual(payload["error_count"], 0)
 
     def test_cli_help(self):
         proc = subprocess.run(

@@ -1,0 +1,285 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "beautifulrust Containers — axum 0.8 · tokio · sqlx",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "request-path",
+        "label": "Request path",
+        "focus": [
+          "clients",
+          "edge",
+          "api",
+          "pg"
+        ],
+        "note": "HTTP through edge nginx, axum app, durable state in Postgres."
+      },
+      {
+        "id": "identity-seam",
+        "label": "Identity seam",
+        "focus": [
+          "idp",
+          "api"
+        ],
+        "note": "OAuth2 callback exchange through the oauth2 crate."
+      },
+      {
+        "id": "outbound",
+        "label": "Outbound ports",
+        "focus": [
+          "api",
+          "mailvendor",
+          "otlp"
+        ],
+        "note": "Mail and tracing leave behind port traits."
+      }
+    ],
+    "output": "docs/architecture/c4-containers.html"
+  },
+  "components": [
+    {
+      "id": "clients",
+      "type": "external",
+      "label": "SDK Clients",
+      "sublabel": "SPA · typed client",
+      "pos": [
+        40,
+        240
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "idp",
+      "type": "security",
+      "label": "OIDC Provider",
+      "sublabel": "oauth2 callback",
+      "pos": [
+        40,
+        60
+      ],
+      "size": [
+        130,
+        64
+      ]
+    },
+    {
+      "id": "edge",
+      "type": "cloud",
+      "label": "Edge nginx",
+      "sublabel": "TLS upstream · serve :80",
+      "pos": [
+        285,
+        240
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "API server",
+      "sublabel": "axum 0.8 · tokio",
+      "pos": [
+        520,
+        240
+      ],
+      "size": [
+        140,
+        64
+      ]
+    },
+    {
+      "id": "pg",
+      "type": "database",
+      "label": "PostgreSQL 17",
+      "sublabel": "sqlx pool",
+      "pos": [
+        740,
+        240
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "worker",
+      "type": "backend",
+      "label": "Outbox worker",
+      "sublabel": "loom bin · janitor · hub",
+      "pos": [
+        985,
+        240
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "mailvendor",
+      "type": "external",
+      "label": "Mail vendor",
+      "sublabel": "STARTTLS SMTP",
+      "pos": [
+        985,
+        420
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "otlp",
+      "type": "external",
+      "label": "OTLP collector",
+      "sublabel": "tracing spans",
+      "pos": [
+        985,
+        560
+      ],
+      "size": [
+        130,
+        60
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Private compose network",
+      "wraps": [
+        "edge",
+        "api",
+        "pg",
+        "worker"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "External vendors",
+      "wraps": [
+        "mailvendor",
+        "otlp"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "c-clients-edge",
+      "from": "clients",
+      "to": "edge",
+      "label": "HTTPS",
+      "variant": "emphasis"
+    },
+    {
+      "id": "c-edge-api",
+      "from": "edge",
+      "to": "api",
+      "label": "route /api"
+    },
+    {
+      "id": "c-idp-api",
+      "from": "idp",
+      "to": "api",
+      "label": "OAuth2 callback",
+      "variant": "security",
+      "fromSide": "right",
+      "toSide": "top",
+      "via": [
+        [
+          620,
+          92
+        ],
+        [
+          620,
+          196
+        ],
+        [
+          590,
+          196
+        ]
+      ],
+      "labelAt": [
+        620,
+        160
+      ]
+    },
+    {
+      "id": "c-api-pg",
+      "from": "api",
+      "to": "pg",
+      "label": "SQL via ports",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "c-api-mail",
+      "from": "api",
+      "to": "mailvendor",
+      "label": "send mail",
+      "variant": "dashed"
+    },
+    {
+      "id": "c-api-otel",
+      "from": "api",
+      "to": "otlp",
+      "label": "OTLP spans",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "labelDy": 18
+    },
+    {
+      "id": "c-worker-pg",
+      "from": "worker",
+      "to": "pg",
+      "label": "claim jobs",
+      "variant": "dashed"
+    },
+    {
+      "id": "c-worker-mail",
+      "from": "worker",
+      "to": "mailvendor",
+      "label": "render → send"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Workspace",
+      "items": [
+        "cargo workspace of 11 crates: core · ports · auth · adminusers · widgets · warden · mailer · loom · api · sdk · cli",
+        "prod compose adds edge nginx on top of api + db; the loom bin runs the worker container"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Run",
+      "items": [
+        "AppState::from_env opens the sqlx pool, runs the embedded sqlx::migrate! migrations and wires Pg adapters as Arc<dyn Trait>",
+        "/healthz and /readyz gate deploys; /metrics serves Prometheus behind auth",
+        "OpenAPI 3.1 generated with utoipa plus Swagger UI"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "CI contract gates (.github/workflows/check.yml)",
+      "items": [
+        "check → scripts/check-skill.py; lints → scripts/check-lints.sh proves every lint in lints/lints.toml fires",
+        "examples → check-examples.py compiles every Rust example; tests → unittest discover over unit · contracts · integration · e2e",
+        "tests/contracts pins the pairing: lints.toml + clippy.toml + lints/check harness stay one three-file unit",
+        "The contracts below are **unbreakable and non-waivable**: developers cannot opt out, and neither can you. When a gate fires, the fix is to re-cut the layout — never to weaken or delete the lints, and never to silence it with `#[allow]` or a lazy workaround.",
+        "review flags any deleted lints entry or #[allow] on the diff itself, loudly — a broken contract is an automatic Must fix"
+      ]
+    }
+  ]
+}

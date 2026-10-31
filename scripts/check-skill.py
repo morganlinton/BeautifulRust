@@ -36,7 +36,7 @@ REF_MENTION_RE = re.compile(
     r"(?<![A-Za-z0-9._-])references/([A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*)"
 )
 FILES_REF_RE = re.compile(
-    r"files/([A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*)"
+    r"(?<![/\w])files/([A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*)"
 )
 GRADER_NAME_RE = re.compile(r"^(\d+)-.+\.md$")
 HEADING_RE = re.compile(r"^## \[([^\]]+)\]")
@@ -626,6 +626,19 @@ class Checker:
         self._check_openai_interface(path, interface)
 
     def _check_openai_interface(self, path: Path, interface: Dict[str, Any]) -> None:
+        # Unknown interface keys: the top-level gate (PORTABLE_KEYS) stops at the
+        # top level; OpenAI's submission review is strict one level deeper.
+        known_interface_keys = (
+            {key for key, _ in OPENAI_TEXT_LIMITS}
+            | set(OPENAI_URL_KEYS)
+            | {"capabilities", "defaultPrompt", "brandColor", "brandColorDark"}
+            | set(OPENAI_ICON_KEYS)
+        )
+        for key in sorted(set(interface) - known_interface_keys):
+            self.add(
+                path, _json_key_line(path, key),
+                "key %r is not in the schema" % key,
+            )
         for key, limit in OPENAI_TEXT_LIMITS:
             value = interface.get(key)
             if not isinstance(value, str) or not value.strip():
@@ -1075,13 +1088,20 @@ class Checker:
         refs = []
         for match in FILES_REF_RE.finditer(text):
             rel_path = match.group(1)
-            if rel_path in (".", ".."):
+            if rel_path.strip(". ") in ("", "."):
                 continue
             refs.append((rel_path, text[: match.start()].count("\n") + 1))
         if refs and not files_dir.is_dir():
             self.add(files_dir, 1, "missing files/ directory")
             return
         for rel_path, line in refs:
+            if ".." in Path(rel_path).parts:
+                self.add(
+                    script,
+                    line,
+                    "references %s, which escapes files/ — fix the reference, not the check" % rel_path,
+                )
+                continue
             target = files_dir / rel_path
             if not target.is_file():
                 self.add(script, line, "references %s, which is not under files/" % rel_path)

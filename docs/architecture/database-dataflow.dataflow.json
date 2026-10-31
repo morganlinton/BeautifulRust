@@ -1,0 +1,209 @@
+{
+ "schema_version": 1,
+ "diagram_type": "dataflow",
+ "meta": {
+  "title": "beautifulrust Identity + Outbox Dataflow",
+  "quality_profile": "showcase",
+  "output": "docs/architecture/database-dataflow.dataflow.html"
+ },
+ "stages": [
+  {
+   "label": "Clients"
+  },
+  {
+   "label": "Use-cases"
+  },
+  {
+   "label": "Postgres"
+  },
+  {
+   "label": "Outbox"
+  },
+  {
+   "label": "Delivery"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "cli",
+   "type": "external",
+   "label": "browser client",
+   "sublabel": "SPA · typed SDK",
+   "stage": 0,
+   "row": 0
+  },
+  {
+   "id": "oidc",
+   "type": "external",
+   "label": "OAuth identities",
+   "sublabel": "Google · GitHub",
+   "stage": 0,
+   "row": 1
+  },
+  {
+   "id": "ucases",
+   "type": "backend",
+   "label": "use-case services",
+   "sublabel": "auth · adminusers · widgets",
+   "stage": 1,
+   "row": 0,
+   "width": 150
+  },
+  {
+   "id": "statepg",
+   "type": "database",
+   "label": "users · sessions",
+   "sublabel": "sqlx tx",
+   "stage": 2,
+   "row": 0
+  },
+  {
+   "id": "codetables",
+   "type": "database",
+   "label": "code tables",
+   "sublabel": "verifications · resets",
+   "stage": 2,
+   "row": 2
+  },
+  {
+   "id": "jobs",
+   "type": "database",
+   "label": "email_jobs",
+   "sublabel": "outbox · statuses",
+   "stage": 3,
+   "row": 1
+  },
+  {
+   "id": "drain",
+   "type": "backend",
+   "label": "outbox worker",
+   "sublabel": "poll 2s · batch 10",
+   "stage": 3,
+   "row": 2
+  },
+  {
+   "id": "sender",
+   "type": "cloud",
+   "label": "mail sender",
+   "sublabel": "Console · STARTTLS",
+   "stage": 4,
+   "row": 0
+  }
+ ],
+ "flows": [
+  {
+   "id": "f-clients",
+   "from": "cli",
+   "to": "ucases",
+   "label": "HTTPS · bearer",
+   "route": "straight"
+  },
+  {
+   "id": "f-oauth",
+   "from": "oidc",
+   "to": "ucases",
+   "label": "OAuth callback",
+   "variant": "security",
+   "labelDy": 22
+  },
+  {
+   "id": "f-state",
+   "from": "ucases",
+   "to": "statepg",
+   "label": "users · sessions",
+   "labelAt": [
+    290,
+    205
+   ]
+  },
+  {
+   "id": "f-codes",
+   "from": "ucases",
+   "to": "codetables",
+   "label": "codes · attempts",
+   "labelDy": -22,
+   "labelAt": [
+    450,
+    347
+   ]
+  },
+  {
+   "id": "f-jobs",
+   "from": "ucases",
+   "to": "jobs",
+   "label": "job in auth tx",
+   "variant": "emphasis",
+   "route": "top-channel",
+   "channelY": 80,
+   "labelAt": [
+    600,
+    68
+   ]
+  },
+  {
+   "id": "f-claim",
+   "from": "jobs",
+   "to": "drain",
+   "label": "claim CTE",
+   "labelAt": [
+    745,
+    328
+   ]
+  },
+  {
+   "id": "f-render",
+   "from": "drain",
+   "to": "sender",
+   "label": "render → send"
+  },
+  {
+   "id": "f-settle",
+   "from": "drain",
+   "to": "jobs",
+   "label": "settle · retry 2^n",
+   "variant": "dashed",
+   "fromSide": "left",
+   "toSide": "left",
+   "labelAt": [
+    660,
+    340
+   ],
+   "via": [
+    [
+     660,
+     385
+    ],
+    [
+     660,
+     271
+    ]
+   ]
+  }
+ ],
+ "cards": [
+  {
+   "dot": "cyan",
+   "title": "Core state",
+   "items": [
+    "users carries role + provider ids; sessions hold the opaque refresh token with is_active and absolute expires_at",
+    "codes live in email_verifications (6-digit · 5 tries · 24h) and password_resets (30m · 3 per 5 min)"
+   ]
+  },
+  {
+   "dot": "emerald",
+   "title": "Outbox",
+   "items": [
+    "auth use-cases INSERT email_jobs inside the same sqlx transaction as the state change (outbox_pg adapter)",
+    "claim takes queued-due rows plus sending rows past the 5-minute lease — FOR UPDATE SKIP LOCKED, at-least-once"
+   ]
+  },
+  {
+   "dot": "rose",
+   "title": "Delivery + ledgers",
+   "items": [
+    "failures back off 2^n minutes ±10% and dead-letter to failed at max_retries 3",
+    "audit_logs records admin actions; the janitor purges expired sessions and code rows hourly"
+   ]
+  }
+ ]
+}

@@ -473,6 +473,69 @@ reservation; a faster hasher (`foldhash`, `FxHash`) only for trusted keys; batch
 instead of per-item locking; applications may set a `#[global_allocator]` such as
 `mimalloc`. Derive `Copy` for small plain types and never for large ones.
 
+## Architecture contract (the backend-rust stack)
+
+Backend repos on the axum/tokio/sqlx/Postgres stack follow the facta backend-rust
+layout: hexagonal crates plus vertical slices (`<app>-api` -> slices -> `ports` ->
+`core`).
+
+The contracts below are **unbreakable and non-waivable**: developers cannot opt out, and neither can you. When a gate fires, the fix is to re-cut the layout — never to weaken or delete the lints, and never to silence it with `#[allow]` or a lazy workaround.
+Review treats a broken contract as an automatic Must fix (see `rust-review`).
+
+- **Dependencies point inward, only**: `composition` (`<app>-api`, the root that
+  knows everything) -> slices (`<app>-<scope>` use-cases) -> `ports` (traits) ->
+  `core` (domain). Never the reverse.
+- **`core` is zero-I/O.** It MUST NOT depend on `tokio`, `axum`, `tower-http`,
+  `reqwest`, or `sqlx`, and owns no `async` — not even for one helper.
+- **Slices don't depend on each other.** A new feature is a new slice; shared
+  behavior moves down into `ports`/`core`, never sideways. Only the orchestrator
+  crate (`<app>-loom`) composes slices.
+- **Ports are traits; use-cases depend on the trait, never the adapter.** A
+  slice's `Service` stores `Arc<dyn WidgetRepository>` — the field type is the
+  contract. Cargo's graph rejects a cycle, not a direction, so a concrete `Pg*`
+  adapter in a use-case compiles and only review can stop it.
+- **Adapters implement the traits, own the SQL, and map errors once.** The `Pg*`
+  adapter in `ports/src/adapters/` is the only place `query_as!` and
+  `sqlx::Error` appear; foreign errors convert to `core::Error` inside the
+  adapter, and the handler's one `IntoResponse` match is the only place
+  `core::Error` becomes an HTTP status.
+- **The composition root is the only wiring site.** `<app>-api` picks the real
+  adapters (`AppState::from_env`; `with_repos` injects mocks for tests), runs
+  the migrations on boot, and validates config once — no re-wiring inside
+  slices, no env reads after startup.
+- **Anything that must survive a restart goes through the `<app>-loom` outbox
+  worker, not `tokio::spawn`.** A raw spawn is best-effort — it dies with the
+  process — and the difference is stated at the call site.
+- **No `unsafe`.** `unsafe_code = "forbid"` in `[workspace.lints]` is a hard
+  wall; unlike a `warn` lint, `forbid` cannot be reopened by any attribute.
+- Every feature change starts by identifying its slice; if you can't say which
+  slice a crate belongs to, stop and re-cut the layout.
+
+```rust
+// <app>-ports/src/domain/widget_repository.rs — the port: a pure-domain signature
+#[async_trait]
+pub trait WidgetRepository: Send + Sync + 'static {
+    async fn find(&self, id: WidgetId) -> Result<Option<Widget>>;
+}
+
+// FORBIDDEN shape — a use-case reaching for the concrete adapter instead of the
+// port (Cargo rejects only cycles, not direction, so this compiles):
+// let repo = PgWidgetRepository::new(pool);
+
+// The slice stores the port; <app>-api wires the adapter at the composition root:
+#[derive(Clone)]
+pub struct WidgetService {
+    repo: Arc<dyn WidgetRepository>,
+}
+// PgWidgetRepository maps sqlx::Error into core::Error; the handler's single
+// IntoResponse match is the only place core::Error becomes an HTTP status.
+```
+
+When the code imports `axum` or `sqlx`, or builds on `tokio`'s async machinery, read
+`references/backend-rust-stack.md` first: some general rules above do not apply to
+what the framework already handles, and the stack has its own set of quiet failure
+modes that pass every lint in this config.
+
 ## 13. Final checklist
 
 Before returning Rust code, confirm:
@@ -509,3 +572,7 @@ Each is a condensed digest of one source.
 - `references/google-rust-style-guide.md` (https://google.github.io/styleguide/rustguide.html):
   formatting, imports, module layout, accessor naming, application vs library.
 - `references/bevy.md` (https://docs.rs/bevy/0.20.0): read first if the crate uses Bevy.
+- `references/backend-rust-stack.md` (the facta `templates/backend-rust` stack): read
+  first if the crate is part of a hexagonal + vertical-slicing axum/sqlx workspace —
+  what the framework already handles, the crate rings, the quiet failure modes, and
+  the lint allowances.

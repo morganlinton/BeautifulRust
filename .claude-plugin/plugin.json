@@ -19,5 +19,10 @@
     "rust",
     "skill",
     "style-guide"
+  ],
+  "skills": [
+    "./skills/rust-best-practices",
+    "./skills/rust-port",
+    "./skills/rust-review"
   ]
 }

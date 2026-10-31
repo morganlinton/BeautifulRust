@@ -30,7 +30,11 @@ what to fix. Only rewrite code when the user asks for that.
 - **Frameworks.** If the crate depends on `bevy` or `bevy_ecs`, read the Bevy digest
   (`bevy.md`) in the `rust-best-practices` skill's references first. It lists the Bevy
   conventions to leave alone (by-value system parameters, the prelude, plain-data
-  components) and the ECS bugs to look for.
+  components) and the ECS bugs to look for. If the workspace is a backend-rust-style
+  hexagonal repo (crates `<app>-core`/`-ports`/`-<scope>`/`-api`), read the backend-rust
+  stack digest (`backend-rust-stack.md`) first: it lists the crate rings, the
+  framework-managed behaviors to leave alone (axum extractors, `#[async_trait]` ports),
+  and the lint-passing failure modes.
 
 ## 2. Run the tools first, if you can
 
@@ -38,6 +42,8 @@ If a Rust toolchain is available, run these from the crate root and fold the res
 the report. They catch the mechanical issues, which leaves you free for design.
 
 ```bash
+cargo clippy --all-targets -- -D warnings   # with lints/lints.toml + lints/clippy.toml wired as
+                                            # [workspace.lints] (in the BeautifulRust repo: scripts/check-lints.sh) — run FIRST
 cargo fmt --check
 cargo clippy --all-targets --all-features -- -W clippy::pedantic
 cargo test
@@ -50,6 +56,25 @@ and review by reading.
 ## 3. What to look for, in priority order
 
 Work through these in order. The first two categories are where real bugs live.
+
+**Architecture contracts (always Must fix, ranked first)**
+
+Broken hexagonal + vertical-slicing contracts are not style: they are the failures the
+whole layout exists to prevent, and they compound silently as the codebase grows. They
+can never be waived, and the fix is re-cutting the layout, not weakening the gate.
+
+- Reversed ring direction: a slice or `ports` crate depending on `<app>-api`, the
+  composition root, or any edge that names an outer ring — nothing depends on the root.
+- `<app>-core` depending on `tokio`, `axum`, `tower-http`, `reqwest`, `sqlx`, or any
+  adapter's client — the zero-I/O wall (layout rules in the `backend-rust-stack.md`
+  digest of the rust-best-practices skill).
+- Two leaf slices depending on each other (horizontal coupling); shared behavior
+  belongs in `ports`/`core`, not sideways, and only `<app>-loom` composes slices.
+- A use-case storing a concrete `Pg*` adapter instead of `Arc<dyn Trait>` — the field
+  type is the contract; composition wiring scattered outside `<app>-api`.
+- Waived gates: `#[allow]`/`#![allow]` that mutes the contract lints or deleted lints entries on the diff — flag the deletion itself, loudly.
+- SQL — a `query!`/`query_as!` macro or a `sqlx::Error` — in files outside
+  `ports/src/adapters/`.
 
 **Correctness and soundness**
 
@@ -148,8 +173,7 @@ Rust API Guidelines)">
 
 How to sort findings:
 
-- **Must fix** means a bug, a soundness hole, a reachable panic, or an API mistake that
-  becomes a breaking change once published.
+- **Must fix** means a bug, a soundness hole, a reachable panic, an API mistake that becomes a breaking change once published, or a broken architecture contract (ranked above everything).
 - **Should fix** means it works but violates a rule with a real cost, such as worse error
   messages, harder testing, or a confusing API.
 - **Consider** means style, naming, and polish.
