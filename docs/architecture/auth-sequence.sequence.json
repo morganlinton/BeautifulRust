@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "beautifulrust Signup → Login Sequence",
+    "quality_profile": "showcase",
+    "output": "docs/architecture/auth-sequence.sequence.html"
+  },
+  "participants": [
+    {
+      "id": "client",
+      "type": "external",
+      "label": "Client",
+      "sublabel": "SPA · typed SDK"
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "API",
+      "sublabel": "axum 0.8 · warden"
+    },
+    {
+      "id": "pg",
+      "type": "database",
+      "label": "Postgres",
+      "sublabel": "sqlx pool"
+    },
+    {
+      "id": "worker",
+      "type": "backend",
+      "label": "Outbox worker",
+      "sublabel": "loom bin"
+    },
+    {
+      "id": "mail",
+      "type": "external",
+      "label": "Mail vendor",
+      "sublabel": "SMTP · console"
+    }
+  ],
+  "segments": [
+    {
+      "from": 150,
+      "to": 292,
+      "label": "Signup + enqueue"
+    },
+    {
+      "from": 308,
+      "to": 494,
+      "label": "Deliver code"
+    },
+    {
+      "from": 508,
+      "to": 742,
+      "label": "Verify + login"
+    }
+  ],
+  "messages": [
+    {
+      "from": "client",
+      "to": "api",
+      "y": 168,
+      "label": "POST /auth/signup",
+      "variant": "emphasis"
+    },
+    {
+      "from": "api",
+      "to": "pg",
+      "y": 212,
+      "label": "INSERT users · email_verifications"
+    },
+    {
+      "from": "api",
+      "to": "pg",
+      "y": 256,
+      "label": "INSERT email_jobs (same tx)"
+    },
+    {
+      "from": "api",
+      "to": "client",
+      "y": 300,
+      "label": "201 · code queued",
+      "variant": "return"
+    },
+    {
+      "from": "worker",
+      "to": "pg",
+      "y": 340,
+      "label": "claim email_jobs SKIP LOCKED"
+    },
+    {
+      "from": "pg",
+      "to": "worker",
+      "y": 380,
+      "label": "due rows · sending lease",
+      "variant": "return"
+    },
+    {
+      "from": "worker",
+      "to": "mail",
+      "y": 420,
+      "label": "render verify_email → send"
+    },
+    {
+      "from": "mail",
+      "to": "client",
+      "y": 458,
+      "label": "email · 6-digit code"
+    },
+    {
+      "from": "worker",
+      "to": "pg",
+      "y": 490,
+      "label": "mark_sent"
+    },
+    {
+      "from": "client",
+      "to": "api",
+      "y": 528,
+      "label": "POST /auth/verify {code}"
+    },
+    {
+      "from": "api",
+      "to": "pg",
+      "y": 566,
+      "label": "check attempts · TTL · consume"
+    },
+    {
+      "from": "pg",
+      "to": "api",
+      "y": 604,
+      "label": "verified",
+      "variant": "return"
+    },
+    {
+      "from": "client",
+      "to": "api",
+      "y": 644,
+      "label": "POST /auth/login"
+    },
+    {
+      "from": "api",
+      "to": "pg",
+      "y": 682,
+      "label": "argon2 · gates · rotate refresh"
+    },
+    {
+      "from": "client",
+      "to": "api",
+      "y": 720,
+      "label": "tokens issued",
+      "variant": "emphasis"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "api",
+      "from": 168,
+      "to": 726,
+      "type": "backend"
+    },
+    {
+      "participant": "pg",
+      "from": 206,
+      "to": 262,
+      "type": "database"
+    },
+    {
+      "participant": "worker",
+      "from": 334,
+      "to": 496,
+      "type": "backend"
+    },
+    {
+      "participant": "mail",
+      "from": 414,
+      "to": 464,
+      "type": "external"
+    },
+    {
+      "participant": "pg",
+      "from": 560,
+      "to": 610,
+      "type": "database"
+    },
+    {
+      "participant": "pg",
+      "from": 676,
+      "to": 726,
+      "type": "database"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "One transaction",
+      "items": [
+        "signup persists the user, the email_verifications row and the email_jobs job in a single sqlx transaction",
+        "a 5-minute sending lease recovers a crashed worker"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Code lifecycle",
+      "items": [
+        "codes cap at 5 wrong guesses, expire in 24h and are consumed on verify",
+        "re-signup re-issues; a verified email answers 409; resend never reveals account existence"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Login + tokens",
+      "items": [
+        "password verifies first — one constant 401; state gates answer stable 403",
+        "access JWT (15m) bound to the session id; refresh rotates in place — replay misses the CAS"
+      ]
+    }
+  ]
+}

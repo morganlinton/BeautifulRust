@@ -1,0 +1,190 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "beautifulrust Outbox Delivery Sequence",
+    "quality_profile": "showcase",
+    "output": "docs/architecture/outbox-sequence.sequence.html"
+  },
+  "participants": [
+    {
+      "id": "ucases",
+      "type": "backend",
+      "label": "auth use-cases",
+      "sublabel": "signup · reset"
+    },
+    {
+      "id": "pg",
+      "type": "database",
+      "label": "Postgres",
+      "sublabel": "email_jobs rows"
+    },
+    {
+      "id": "worker",
+      "type": "backend",
+      "label": "outbox worker",
+      "sublabel": "loom bin · janitor"
+    },
+    {
+      "id": "vendor",
+      "type": "external",
+      "label": "Mail vendor",
+      "sublabel": "STARTTLS · console"
+    }
+  ],
+  "segments": [
+    {
+      "from": 150,
+      "to": 248,
+      "label": "Enqueue in tx"
+    },
+    {
+      "from": 262,
+      "to": 488,
+      "label": "Claim + render"
+    },
+    {
+      "from": 500,
+      "to": 612,
+      "label": "Send + settle + purge"
+    }
+  ],
+  "messages": [
+    {
+      "from": "ucases",
+      "to": "pg",
+      "y": 176,
+      "label": "INSERT user + email_jobs (one tx)",
+      "variant": "emphasis"
+    },
+    {
+      "from": "pg",
+      "to": "ucases",
+      "y": 216,
+      "label": "committed",
+      "variant": "return"
+    },
+    {
+      "from": "worker",
+      "to": "pg",
+      "y": 272,
+      "label": "poll 2s · claim eligible rows"
+    },
+    {
+      "from": "pg",
+      "to": "worker",
+      "y": 312,
+      "label": "queued rows · 5m lease",
+      "variant": "return"
+    },
+    {
+      "from": "worker",
+      "to": "vendor",
+      "y": 352,
+      "label": "render verify_email → send"
+    },
+    {
+      "from": "vendor",
+      "to": "worker",
+      "y": 390,
+      "label": "accepted",
+      "variant": "return"
+    },
+    {
+      "from": "worker",
+      "to": "pg",
+      "y": 430,
+      "label": "mark_sent"
+    },
+    {
+      "from": "worker",
+      "to": "pg",
+      "y": 466,
+      "label": "on failure: backoff · dead-letter"
+    },
+    {
+      "from": "worker",
+      "to": "pg",
+      "y": 512,
+      "label": "hourly: purge expired sessions · codes",
+      "variant": "dashed"
+    },
+    {
+      "from": "pg",
+      "to": "worker",
+      "y": 552,
+      "label": "purged",
+      "variant": "return"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "ucases",
+      "from": 176,
+      "to": 222,
+      "type": "backend"
+    },
+    {
+      "participant": "pg",
+      "from": 182,
+      "to": 228,
+      "type": "database"
+    },
+    {
+      "participant": "worker",
+      "from": 262,
+      "to": 560,
+      "type": "backend"
+    },
+    {
+      "participant": "pg",
+      "from": 262,
+      "to": 318,
+      "type": "database"
+    },
+    {
+      "participant": "vendor",
+      "from": 346,
+      "to": 396,
+      "type": "external"
+    },
+    {
+      "participant": "pg",
+      "from": 424,
+      "to": 472,
+      "type": "database"
+    },
+    {
+      "participant": "pg",
+      "from": 502,
+      "to": 558,
+      "type": "database"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Zero-broker outbox",
+      "items": [
+        "the job row rides the same sqlx transaction as the auth write — no dual-write gap",
+        "claim = queued-due-now OR sending older than the 5-minute lease, FOR UPDATE SKIP LOCKED"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Delivery",
+      "items": [
+        "poll every 2s (OUTBOX_POLL) with batch 10 (OUTBOX_BATCH)",
+        "sender: Console when OFFLINE or the host is empty, else STARTTLS via mailer::render"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Failure + janitor",
+      "items": [
+        "backoff 2^n minutes with ±10% deterministic jitter; dead-letter to failed at max_retries 3",
+        "the janitor sweeps expired sessions, email_verifications and password_resets hourly"
+      ]
+    }
+  ]
+}

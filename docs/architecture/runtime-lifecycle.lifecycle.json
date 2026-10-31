@@ -1,0 +1,184 @@
+{
+ "schema_version": 3,
+ "diagram_type": "lifecycle",
+ "meta": {
+  "title": "beautifulrust Runtime Lifecycle — Boot to Request Flow",
+  "quality_profile": "showcase",
+  "output": "docs/architecture/runtime-lifecycle.lifecycle.html"
+ },
+ "mainPath": [
+  "boot",
+  "wire",
+  "serve",
+  "ready",
+  "flow"
+ ],
+ "states": [
+  {
+   "id": "boot",
+   "type": "start",
+   "label": "load config",
+   "sublabel": "typed env",
+   "step": "01",
+   "tag": "entry"
+  },
+  {
+   "id": "wire",
+   "type": "active",
+   "label": "wire AppState",
+   "sublabel": "pool · adapters",
+   "step": "02"
+  },
+  {
+   "id": "serve",
+   "type": "active",
+   "label": "axum serve",
+   "sublabel": "bind :8080 default",
+   "step": "03"
+  },
+  {
+   "id": "ready",
+   "type": "decision",
+   "label": "readyz gate",
+   "sublabel": "SELECT 1",
+   "step": "04",
+   "tag": "gate"
+  },
+  {
+   "id": "flow",
+   "type": "success",
+   "label": "request flow",
+   "sublabel": "gates · envelope",
+   "step": "05",
+   "tag": "steady"
+  },
+  {
+   "id": "cfgexit",
+   "type": "failure",
+   "label": "exit 1",
+   "sublabel": "missing secret · bad URL",
+   "tag": "terminal"
+  },
+  {
+   "id": "degraded",
+   "type": "failure",
+   "label": "503 degraded",
+   "sublabel": "pool unreachable",
+   "tag": "terminal"
+  },
+  {
+   "id": "auth403",
+   "type": "neutral",
+   "label": "auth short-circuit",
+   "sublabel": "401 · 403 · 429",
+   "tag": "end of request"
+  },
+  {
+   "id": "drain",
+   "type": "active",
+   "label": "outbox drain",
+   "sublabel": "claim · backoff 2^n",
+   "tag": "background"
+  },
+  {
+   "id": "clean",
+   "type": "success",
+   "label": "delivered · swept",
+   "sublabel": "mark_sent · janitor hourly",
+   "tag": "terminal"
+  }
+ ],
+ "transitions": [
+  {
+   "id": "t1",
+   "from": "boot",
+   "to": "wire",
+   "label": "env validated"
+  },
+  {
+   "id": "t2",
+   "from": "wire",
+   "to": "serve",
+   "label": "state built"
+  },
+  {
+   "id": "t3",
+   "from": "serve",
+   "to": "ready",
+   "label": "listener bound"
+  },
+  {
+   "id": "t4",
+   "from": "ready",
+   "to": "flow",
+   "label": "pool healthy"
+  },
+  {
+   "id": "t5",
+   "from": "boot",
+   "to": "cfgexit",
+   "label": "missing/invalid",
+   "variant": "security"
+  },
+  {
+   "id": "t6",
+   "from": "wire",
+   "to": "cfgexit",
+   "label": "migration error"
+  },
+  {
+   "id": "t7",
+   "from": "ready",
+   "to": "degraded",
+   "label": "SELECT 1 fails",
+   "variant": "dashed"
+  },
+  {
+   "id": "t8",
+   "from": "serve",
+   "to": "auth403",
+   "label": "bad token",
+   "variant": "security"
+  },
+  {
+   "id": "t9",
+   "from": "flow",
+   "to": "drain",
+   "label": "email jobs",
+   "variant": "dashed"
+  },
+  {
+   "id": "t10",
+   "from": "drain",
+   "to": "clean",
+   "label": "at-least-once",
+   "variant": "emphasis"
+  }
+ ],
+ "cards": [
+  {
+   "dot": "cyan",
+   "title": "Boot rail",
+   "items": [
+    "config loads once from typed env and validates on boot; a missing secret fails closed before bind",
+    "AppState::from_env opens the sqlx pool and runs the embedded sqlx::migrate! migrations; <app>-api migrate is the one-shot runner"
+   ]
+  },
+  {
+   "dot": "emerald",
+   "title": "Gates + health",
+   "items": [
+    "readyz probes the pool and answers 503 degraded; /healthz is process-alive; /metrics sits behind auth",
+    "errors return {error: {code, title, detail, request_id}}; 5xx detail redacts, rate limits carry Retry-After"
+   ]
+  },
+  {
+   "dot": "rose",
+   "title": "Background + realtime",
+   "items": [
+    "the loom worker claims email_jobs with SKIP LOCKED and a 5-minute lease",
+    "the WS upgrade authenticates after upgrade — a bad ?token= closes 4001 authentication_failed"
+   ]
+  }
+ ]
+}

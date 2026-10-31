@@ -1,0 +1,238 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "beautifulrust Auth Pipeline \u2014 Signup \u00b7 Codes \u00b7 Gates \u00b7 Tokens",
+    "quality_profile": "showcase",
+    "output": "docs/architecture/auth-algorithm.workflow.html"
+  },
+  "lanes": [
+    {
+      "id": "clients",
+      "label": "Clients"
+    },
+    {
+      "id": "enroll",
+      "label": "Enrollment"
+    },
+    {
+      "id": "identity",
+      "label": "Identity gates"
+    },
+    {
+      "id": "tokens",
+      "label": "Tokens"
+    },
+    {
+      "id": "ledger",
+      "label": "Ledger"
+    },
+    {
+      "id": "dispatch",
+      "label": "Outbox delivery"
+    }
+  ],
+  "phases": [
+    {
+      "id": "p-enroll",
+      "label": "Signup + code",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "p-check",
+      "label": "Verify + gates",
+      "fromCol": 2,
+      "toCol": 3,
+      "variant": "emphasis"
+    },
+    {
+      "id": "p-mint",
+      "label": "Tokens + ledger",
+      "fromCol": 4,
+      "toCol": 5
+    }
+  ],
+  "mainPath": [
+    "req",
+    "signup",
+    "code",
+    "verify",
+    "gates",
+    "mint",
+    "sessions"
+  ],
+  "nodes": [
+    {
+      "id": "req",
+      "lane": "clients",
+      "col": 0,
+      "type": "frontend",
+      "label": "api client",
+      "sublabel": "SDK \u00b7 bearer"
+    },
+    {
+      "id": "signup",
+      "lane": "enroll",
+      "col": 0,
+      "type": "backend",
+      "label": "sign up",
+      "sublabel": "POST /auth/signup"
+    },
+    {
+      "id": "code",
+      "lane": "enroll",
+      "col": 1,
+      "type": "backend",
+      "label": "issue code",
+      "sublabel": "6 digits \u00b7 24h TTL"
+    },
+    {
+      "id": "mailnode",
+      "lane": "dispatch",
+      "col": 2,
+      "type": "cloud",
+      "label": "verify_email",
+      "sublabel": "mailer render"
+    },
+    {
+      "id": "verify",
+      "lane": "identity",
+      "col": 2,
+      "type": "backend",
+      "label": "verify code",
+      "sublabel": "5-try cap"
+    },
+    {
+      "id": "gates",
+      "lane": "identity",
+      "col": 3,
+      "type": "security",
+      "label": "login gates",
+      "sublabel": "argon2 \u00b7 lockout \u00b7 state 403s",
+      "width": 150
+    },
+    {
+      "id": "mint",
+      "lane": "tokens",
+      "col": 4,
+      "type": "backend",
+      "label": "mint tokens",
+      "sublabel": "HS256 15m \u00b7 refresh"
+    },
+    {
+      "id": "sessions",
+      "lane": "tokens",
+      "col": 5,
+      "type": "database",
+      "label": "sessions",
+      "sublabel": "refresh \u00b7 rotate CAS"
+    },
+    {
+      "id": "audit",
+      "lane": "ledger",
+      "col": 5,
+      "type": "database",
+      "label": "audit_logs",
+      "sublabel": "login \u00b7 revoke"
+    }
+  ],
+  "edges": [
+    {
+      "id": "w-1",
+      "from": "req",
+      "to": "signup",
+      "route": "auto"
+    },
+    {
+      "id": "w-2",
+      "from": "signup",
+      "to": "code",
+      "label": "credentials"
+    },
+    {
+      "id": "w-3",
+      "from": "code",
+      "to": "mailnode",
+      "label": "enqueue (same tx)",
+      "route": "drop",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelSegment": 1
+    },
+    {
+      "id": "w-4",
+      "from": "code",
+      "to": "verify",
+      "route": "auto",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "label": "submit code",
+      "labelSegment": 1
+    },
+    {
+      "id": "w-5",
+      "from": "verify",
+      "to": "gates",
+      "label": "consumed"
+    },
+    {
+      "id": "w-6",
+      "from": "gates",
+      "to": "mint",
+      "label": "authorized principal"
+    },
+    {
+      "id": "w-7",
+      "from": "mint",
+      "to": "sessions",
+      "label": "rotate refresh"
+    },
+    {
+      "id": "w-8",
+      "from": "sessions",
+      "to": "mint",
+      "label": "reuse \u2192 CAS miss",
+      "route": "auto",
+      "variant": "security",
+      "role": "return",
+      "width": 1.2,
+      "labelSegment": 1
+    },
+    {
+      "id": "w-9",
+      "from": "mint",
+      "to": "audit",
+      "route": "auto",
+      "label": "login \u00b7 revoke"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Codes",
+      "items": [
+        "6-digit codes are single-use, capped at 5 wrong guesses, and expire in VERIFY_CODE_TTL (24h); resets use RESET_CODE_TTL (30m) with a 3-per-5-min rate limit",
+        "re-signup of an unverified email re-issues a code; a verified email answers 409",
+        "password_resets auto-verify the account and revoke all sessions"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Gates",
+      "items": [
+        "argon2id over an HMAC-SHA256 pepper pre-hash \u2014 password first, one constant 401",
+        "state gates run only after the password verifies (anti-enumeration): blocked \u2192 inactive \u2192 unverified, each a stable 403",
+        "5 failed logins lock the account (MAX_LOGIN_RETRIES)"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Tokens",
+      "items": [
+        "access JWT HS256 15m with jti == sessions.id \u2014 revoking the session revokes the token",
+        "refresh is opaque and rotated in place; replay misses the compare-and-set \u2192 401"
+      ]
+    }
+  ]
+}

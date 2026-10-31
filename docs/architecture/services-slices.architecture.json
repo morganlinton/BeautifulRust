@@ -1,0 +1,240 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "beautifulrust Crate Map — Hexagonal Slices",
+    "quality_profile": "showcase",
+    "output": "docs/architecture/services-slices.architecture.html"
+  },
+  "components": [
+    {
+      "id": "apiroot",
+      "type": "backend",
+      "label": "api composition root",
+      "sublabel": "state · router · config",
+      "pos": [
+        420,
+        40
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "authslice",
+      "type": "backend",
+      "label": "auth slice",
+      "sublabel": "signup · session · oauth",
+      "pos": [
+        180,
+        220
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "widgetslice",
+      "type": "backend",
+      "label": "widgets slice",
+      "sublabel": "CRUD · SSE feed",
+      "pos": [
+        430,
+        220
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "warden",
+      "type": "security",
+      "label": "warden",
+      "sublabel": "JWT codec · argon2 · cookies",
+      "pos": [
+        680,
+        220
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "portsbox",
+      "type": "backend",
+      "label": "ports",
+      "sublabel": "traits · Pg adapters · mocks",
+      "pos": [
+        180,
+        400
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "corebox",
+      "type": "backend",
+      "label": "core",
+      "sublabel": "domain types · zero I/O",
+      "pos": [
+        430,
+        400
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "loombox",
+      "type": "backend",
+      "label": "loom",
+      "sublabel": "hub · outbox worker · janitor",
+      "pos": [
+        680,
+        400
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "mailerbox",
+      "type": "cloud",
+      "label": "mailer",
+      "sublabel": "templates · senders",
+      "pos": [
+        680,
+        570
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "jobsbox",
+      "type": "database",
+      "label": "email_jobs",
+      "sublabel": "outbox · SKIP LOCKED",
+      "pos": [
+        180,
+        570
+      ],
+      "size": [
+        130,
+        60
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Feature slices",
+      "wraps": [
+        "authslice",
+        "widgetslice"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Composition root",
+      "wraps": [
+        "apiroot"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "s-1",
+      "from": "apiroot",
+      "to": "authslice",
+      "label": "axum routes · AppState"
+    },
+    {
+      "id": "s-2",
+      "from": "apiroot",
+      "to": "widgetslice",
+      "label": "handlers"
+    },
+    {
+      "id": "s-3",
+      "from": "apiroot",
+      "to": "warden",
+      "label": "middleware"
+    },
+    {
+      "id": "s-4",
+      "from": "authslice",
+      "to": "portsbox",
+      "label": "Arc<dyn repo>"
+    },
+    {
+      "id": "s-5",
+      "from": "portsbox",
+      "to": "corebox",
+      "label": "domain types"
+    },
+    {
+      "id": "s-6",
+      "from": "warden",
+      "to": "corebox",
+      "label": "types · Error",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "s-7",
+      "from": "loombox",
+      "to": "mailerbox",
+      "label": "render/send",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "s-8",
+      "from": "loombox",
+      "to": "jobsbox",
+      "label": "claim · settle",
+      "fromSide": "left",
+      "toSide": "right",
+      "labelAt": [
+        490,
+        492
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Crate workspace",
+      "items": [
+        "11 <app>-prefixed crates: core · ports · auth · adminusers · widgets · warden · mailer · loom · api · sdk · cli",
+        "adminusers (admin roster) and the sdk/cli clients follow the same slice pattern drawn here"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Hexagonal rings",
+      "items": [
+        "slices hold Arc<dyn Trait> repos behind ports; only the composition root names concrete Pg adapters",
+        "SQL lives only in ports/src/adapters/*_pg.rs as runtime-checked sqlx::query strings"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Background + security",
+      "items": [
+        "loom runs run_outbox_worker + run_janitor and the realtime hub (rooms user:<id>)",
+        "warden owns the HS256 JWT codec (jti == sessions.id), argon2id over an HMAC-SHA256 pepper, cookies and the error envelope"
+      ]
+    }
+  ]
+}
