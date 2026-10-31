@@ -32,3 +32,15 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Compile every Rust example in the skills and docs
         run: python3 scripts/check-examples.py
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # The unittest suite compiles rust blocks and clippy-proves lints, so it
+      # needs the same toolchain the jobs above pin.
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: Run the unittest suite (unit, contracts, integration, e2e)
+        run: python3 -I -m unittest discover -s tests -t .

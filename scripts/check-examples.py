@@ -33,6 +33,7 @@ DOC_GLOBS = (
     "examples/*.md",
     "skills/*/SKILL.md",
     "skills/*/references/*.md",
+    "skills/*/references/**/*.md",
 )
 FENCE_RE = re.compile(r"^(\s*)(`{3,}|~{3,})\s*([^`\s]*)")
 # A function body that is only a placeholder, e.g. `fn f() -> bool { /* ... */ }`.
@@ -143,6 +144,11 @@ def apply_harness(
     """Attach preludes, templates, and skips. Report harness drift."""
     problems: List[Problem] = []
     files = harness.get("files", {})
+    if not isinstance(files, dict):
+        problems.append(
+            Problem(HARNESS.as_posix(), 1, "error", "files must be a JSON object")
+        )
+        return problems
     by_path: Dict[str, List[Block]] = {}
     for block in blocks:
         by_path.setdefault(block.path, []).append(block)
@@ -151,6 +157,11 @@ def apply_harness(
         if path not in by_path:
             problems.append(
                 Problem(harness_path, 1, "error", "%s: file has no rust blocks or does not exist" % path)
+            )
+            continue
+        if not isinstance(entry, dict) or not isinstance(entry.get("blocks") or {}, dict):
+            problems.append(
+                Problem(harness_path, 1, "error", "%s: entry must be an object" % path)
             )
             continue
         for key, spec in (entry.get("blocks") or {}).items():
@@ -162,6 +173,12 @@ def apply_harness(
             if index < 1 or index > len(by_path[path]):
                 problems.append(
                     Problem(harness_path, 1, "error", "%s: no rust block #%d (file has %d)" % (path, index, len(by_path[path])))
+                )
+                continue
+            if not isinstance(spec, dict):
+                problems.append(
+                    Problem(harness_path, 1, "error",
+                            "%s: block spec must be an object" % path)
                 )
                 continue
             block = by_path[path][index - 1]

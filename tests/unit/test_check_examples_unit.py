@@ -3,38 +3,18 @@
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import shutil
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+from tests._support import REPO_ROOT, load_script, write
+
 SCRIPT = REPO_ROOT / "scripts" / "check-examples.py"
 HAS_CARGO = shutil.which("cargo") is not None
 
-
-def load_checker():
-    spec = importlib.util.spec_from_file_location("check_examples", SCRIPT)
-    if spec is None or spec.loader is None:
-        raise RuntimeError("cannot load %s" % SCRIPT)
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = mod
-    spec.loader.exec_module(mod)
-    return mod
-
-
-ce = load_checker()
-
-
-def write(path, content):
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
-    return path
-
+ce = load_script("check-examples.py")
 
 README = """\
 # Demo
@@ -214,11 +194,6 @@ class EndToEndTest(RepoTest):
         problems, compiled, skipped = ce.check_repo(self.root)
         self.assertEqual(problems, [])
         self.assertEqual((compiled, skipped), (2, 0))
-
-    def test_this_repo_passes(self):
-        problems, compiled, _ = ce.check_repo(REPO_ROOT)
-        self.assertEqual([ce.format_problem(p) for p in problems], [])
-        self.assertGreater(compiled, 0)
 
 
 if __name__ == "__main__":

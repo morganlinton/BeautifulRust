@@ -30,11 +30,26 @@ trap 'rm -rf "$TARGET" "$JSON"' EXIT
 
 export CARGO_TERM_COLOR=never
 export CLIPPY_CONF_DIR="$ROOT/lints"
-set +e
-cargo clippy --manifest-path "$MANIFEST" --target-dir "$TARGET" --message-format=json \
-  >"$JSON" 2>"$TARGET/clippy.err"
-CLIPPY_STATUS=$?
-set -e
+# Bound the clippy run: GNU `timeout` when available (CI linux runners). macOS
+# ships no GNU timeout, so fall back to a perl alarm wrapper (same idiom as
+# sync_repos.sh). Bound it so a hung toolchain can never stall the gate.
+CLIPPY_RUN=(cargo clippy --manifest-path "$MANIFEST" --target-dir "$TARGET" --message-format=json)
+if command -v timeout >/dev/null 2>&1; then
+  set +e
+  timeout 600 "${CLIPPY_RUN[@]}" >"$JSON" 2>"$TARGET/clippy.err"
+  CLIPPY_STATUS=$?
+  set -e
+elif command -v perl >/dev/null 2>&1; then
+  set +e
+  perl -e 'alarm shift; exec @ARGV' 600 "${CLIPPY_RUN[@]}" >"$JSON" 2>"$TARGET/clippy.err"
+  CLIPPY_STATUS=$?
+  set -e
+else
+  set +e
+  "${CLIPPY_RUN[@]}" >"$JSON" 2>"$TARGET/clippy.err"
+  CLIPPY_STATUS=$?
+  set -e
+fi
 
 python3 - "$TABLE" "$MANIFEST" "$SRC" "$JSON" "$CLIPPY_STATUS" "$TARGET/clippy.err" <<'PY'
 import json
@@ -175,8 +190,17 @@ for line in Path(json_path).read_text().splitlines():
 
 if clippy_status != 0 and not any(level == "error" for _, _, level, _ in fired):
     print(f"cargo clippy exited {clippy_status} without compiler diagnostics")
-    if err.strip():
-        print(err.strip())
+    failed = True
+
+# Clippy's stderr belongs on the failure report: previously it was hidden
+# unless clippy exited nonzero with no compiler diagnostics, so when the check
+# failed for other reasons (a missing expect, an unexpected diagnostic) the
+# stderr evidence was swallowed. Surface it on EVERY failure path, never only
+# when no other problems exist. (Routine cargo progress lines reach stderr on
+# clean runs, so noise alone must not fail the check.)
+if failed and err.strip():
+    print("clippy stderr (surfaced so it is never hidden when other problems exist):")
+    print(err.strip())
     failed = True
 
 unmatched_expects = []
