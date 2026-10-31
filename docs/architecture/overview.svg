@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="560" viewBox="0 0 1080 560" role="img" aria-labelledby="ov-title">
+  <title id="ov-title">Beautiful Rust — architecture: hexagonal crates and vertical slices on the axum, tokio, sqlx stack</title>
+  <style>
+    text { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .title { fill: #DEA584; font-size: 21px; font-weight: 700; }
+    .sub { fill: #94A3B8; font-size: 13px; }
+    .col { fill: #94A3B8; font-size: 11px; font-weight: 600; letter-spacing: 1.6px; }
+    .band { fill: #1E293B; fill-opacity: 0.35; stroke: #1E293B; }
+    .card { fill: #131C30; stroke: #1E293B; }
+    .ct { fill: #E2E8F0; font-size: 12.5px; font-weight: 700; }
+    .cl { fill: #94A3B8; font-size: 11px; }
+    .pill { fill: #0B1020; stroke: #DEA584; stroke-opacity: 0.75; }
+    .pt { fill: #DEA584; font-size: 11px; font-weight: 700; letter-spacing: 0.4px; }
+    .wire { stroke: #475569; stroke-width: 1.5; }
+    .chip { fill: #131C30; stroke: #1E293B; }
+  </style>
+
+  <defs>
+    <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L8 4L0 8z" fill="#475569"/>
+    </marker>
+  </defs>
+
+  <!-- canvas -->
+  <rect x="0" y="0" width="1080" height="560" rx="14" fill="#0B1020"/>
+
+  <!-- header -->
+  <text class="title" x="32" y="42">Beautiful Rust — architecture</text>
+  <text class="sub" x="32" y="64">axum + tokio + sqlx (Postgres) — hexagonal crates and vertical slices, taught by the skills and enforced by the lints</text>
+  <rect class="pill" x="848" y="30" width="200" height="26" rx="13"/>
+  <text class="pt" x="948" y="47" text-anchor="middle">CONTRACTS NON-WAIVABLE</text>
+
+  <!-- column labels -->
+  <text class="col" x="36" y="110">CLIENTS</text>
+  <text class="col" x="180" y="110">COMPOSITION (root · axum)</text>
+  <text class="col" x="366" y="110">SLICES</text>
+  <text class="col" x="582" y="110">PORTS (traits)</text>
+  <text class="col" x="788" y="110">DOMAIN (pure · I/O-free)</text>
+
+  <!-- ring bands -->
+  <rect class="band" x="32"  y="120" width="128" height="232" rx="10"/>
+  <rect class="band" x="176" y="120" width="170" height="232" rx="10"/>
+  <rect class="band" x="362" y="120" width="200" height="232" rx="10"/>
+  <rect class="band" x="578" y="120" width="190" height="232" rx="10"/>
+  <rect class="band" x="784" y="120" width="264" height="232" rx="10"/>
+
+  <!-- boundary gate pills, straddling each ring boundary -->
+  <rect class="pill" x="60"  y="120" width="216" height="24" rx="12"/>
+  <text class="pt" x="168" y="136" text-anchor="middle">CLIENTS · ADAPTERS → CORE ONLY</text>
+  <rect class="pill" x="254" y="120" width="200" height="24" rx="12"/>
+  <text class="pt" x="354" y="136" text-anchor="middle">CARGO.EDGES = THE CONTRACT</text>
+  <rect class="pill" x="465" y="120" width="210" height="24" rx="12"/>
+  <text class="pt" x="570" y="136" text-anchor="middle">SLICES NEVER IMPORT SLICES</text>
+  <rect class="pill" x="656" y="120" width="240" height="24" rx="12"/>
+  <text class="pt" x="776" y="136" text-anchor="middle">ZERO-DEP CORE · unsafe_code = FORBID</text>
+
+  <!-- flow wires -->
+  <line class="wire" x1="162" y1="250" x2="174" y2="250" marker-end="url(#arr)"/>
+  <line class="wire" x1="348" y1="250" x2="360" y2="250" marker-end="url(#arr)"/>
+  <line class="wire" x1="564" y1="250" x2="576" y2="250" marker-end="url(#arr)"/>
+  <line class="wire" x1="770" y1="250" x2="782" y2="250" marker-end="url(#arr)"/>
+
+  <!-- CLIENTS -->
+  <rect class="card" x="44" y="156" width="104" height="42" rx="8"/>
+  <text class="ct" x="54" y="174">SPA · sdk · cli</text>
+  <text class="cl" x="54" y="188">typed clients</text>
+
+  <!-- COMPOSITION -->
+  <rect class="card" x="186" y="156" width="150" height="150" rx="8"/>
+  <text class="ct" x="196" y="176">api</text>
+  <text class="cl" x="196" y="192">composition root —</text>
+  <text class="cl" x="196" y="206">the only wiring site</text>
+  <text class="cl" x="196" y="234">state · router · config</text>
+  <text class="cl" x="196" y="250">AppState::from_env</text>
+  <text class="cl" x="196" y="266">runs migrations</text>
+  <text class="cl" x="196" y="282">validates config once</text>
+  <text class="cl" x="196" y="298">owns axum::serve</text>
+
+  <!-- SLICES -->
+  <rect class="card" x="372" y="152" width="180" height="42" rx="8"/>
+  <text class="ct" x="382" y="170">auth</text>
+  <text class="cl" x="382" y="184">signup · session · oauth</text>
+  <rect class="card" x="372" y="202" width="180" height="42" rx="8"/>
+  <text class="ct" x="382" y="220">adminusers</text>
+  <text class="cl" x="382" y="234">one capability per crate</text>
+  <rect class="card" x="372" y="252" width="180" height="42" rx="8"/>
+  <text class="ct" x="382" y="270">widgets</text>
+  <text class="cl" x="382" y="284">CRUD · SSE feed</text>
+  <rect class="card" x="372" y="302" width="180" height="42" rx="8"/>
+  <text class="ct" x="382" y="320">loom</text>
+  <text class="cl" x="382" y="334">hub · outbox worker · janitor</text>
+
+  <!-- PORTS -->
+  <rect class="card" x="590" y="156" width="166" height="150" rx="8"/>
+  <text class="ct" x="600" y="176">ports</text>
+  <text class="cl" x="600" y="196">#[async_trait] traits</text>
+  <text class="cl" x="600" y="212">domain/ · mock/ (feature)</text>
+  <text class="cl" x="600" y="240">Arc&lt;dyn Trait&gt; is the</text>
+  <text class="cl" x="600" y="256">contract — use-cases</text>
+  <text class="cl" x="600" y="272">hold the port,</text>
+  <text class="cl" x="600" y="288">never the Pg* adapter</text>
+
+  <!-- DOMAIN (accented panel) -->
+  <rect x="796" y="156" width="240" height="190" rx="8" fill="#DEA584" fill-opacity="0.18" stroke="#DEA584" stroke-opacity="0.45"/>
+  <text class="ct" x="808" y="176" fill="#DEA584">core — zero I/O</text>
+  <text class="cl" x="808" y="198">no tokio · axum · sqlx · reqwest</text>
+  <text class="cl" x="808" y="214">no async, not even one helper</text>
+  <text class="cl" x="808" y="242">typed IDs · value objects</text>
+  <text class="cl" x="808" y="258">one Error enum (thiserror)</text>
+  <text class="cl" x="808" y="286">depends on nothing — CI</text>
+  <text class="cl" x="808" y="302">asserts an empty</text>
+  <text class="cl" x="808" y="318">[dependencies] section</text>
+
+  <!-- ADAPTERS row -->
+  <text class="col" x="32" y="372">ADAPTERS — IMPLEMENT THE PORTS · OWN THE SQL · DEPEND ON CORE ONLY</text>
+  <rect class="band" x="32" y="380" width="1016" height="56" rx="10"/>
+  <rect class="card" x="44" y="388" width="238" height="40" rx="8"/>
+  <text class="ct" x="54" y="404">ports/adapters</text>
+  <text class="cl" x="54" y="419">query_as! · .sqlx cache · paired .sql</text>
+  <rect class="card" x="296" y="388" width="238" height="40" rx="8"/>
+  <text class="ct" x="306" y="404">warden</text>
+  <text class="cl" x="306" y="419">HS256 JWT · argon2id · HMAC pepper</text>
+  <rect class="card" x="548" y="388" width="238" height="40" rx="8"/>
+  <text class="ct" x="558" y="404">mailer</text>
+  <text class="cl" x="558" y="419">templates · senders</text>
+  <rect class="card" x="800" y="388" width="238" height="40" rx="8"/>
+  <text class="ct" x="810" y="404">email_jobs</text>
+  <text class="cl" x="810" y="419">outbox · SKIP LOCKED</text>
+
+  <!-- CI gates -->
+  <text class="col" x="32" y="466">CI GATES</text>
+  <rect class="chip" x="32" y="476" width="242" height="38" rx="8"/>
+  <text class="ct" x="44" y="492">check-skill.py</text>
+  <text class="cl" x="44" y="507">validates skills · evals · manifests</text>
+  <rect class="chip" x="290" y="476" width="242" height="38" rx="8"/>
+  <text class="ct" x="302" y="492">check-lints.sh</text>
+  <text class="cl" x="302" y="507">proves every lint in the table fires</text>
+  <rect class="chip" x="548" y="476" width="242" height="38" rx="8"/>
+  <text class="ct" x="560" y="492">check-examples.py</text>
+  <text class="cl" x="560" y="507">compiles every Rust block</text>
+  <rect class="chip" x="806" y="476" width="242" height="38" rx="8"/>
+  <text class="ct" x="818" y="492">tests/contracts</text>
+  <text class="cl" x="818" y="507">unittests the lint pairing · CI gates</text>
+
+  <!-- footer note -->
+  <text class="cl" x="32" y="542">The lint pairing is itself a contract: lints.toml + clippy.toml + lints/check stay one three-file unit, pinned by tests/contracts — and the contracts are non-waivable.</text>
+</svg>
