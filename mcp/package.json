@@ -1,0 +1,25 @@
+{
+  "name": "beautiful-rust-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Remote MCP server for Beautiful Rust: rule search, lint explanations, and crate versions.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "data": "python3 ../scripts/build-mcp-data.py",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test 'test/*.test.ts'"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261018.1",
+    "@types/node": "22.20.5",
+    "typescript": "7.0.2",
+    "wrangler": "4.151.1"
+  }
+}

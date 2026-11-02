@@ -332,7 +332,9 @@ BeautifulRust/
 │   ├── check-lints.sh         proves every lint in the table fires
 │   ├── check-examples.py      compiles every Rust example in the docs
 │   ├── examples.json          context that lets fragment examples compile
-│   └── package-openai-plugin.py   builds the ChatGPT / Codex directory ZIP
+│   ├── package-openai-plugin.py   builds the ChatGPT / Codex directory ZIP
+│   └── build-mcp-data.py      builds the MCP server's search index and lint catalog
+├── mcp/                       MCP server (Cloudflare Worker), not deployed yet
 ├── benchmarks/
 │   └── cross-agent-2026-10/   Claude Code vs Codex, with and without the skills
 ├── examples/

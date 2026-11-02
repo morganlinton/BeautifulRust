@@ -32,3 +32,26 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Compile every Rust example in the skills and docs
         run: python3 scripts/check-examples.py
+
+  mcp:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mcp
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mcp/package-lock.json
+      - name: Build the MCP server's data from the skills and toolchain
+        run: npm run data
+      - run: npm ci
+      - name: Type-check the MCP server
+        run: npm run typecheck
+      - name: Test the MCP server
+        run: npm test
