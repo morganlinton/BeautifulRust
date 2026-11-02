@@ -128,7 +128,10 @@ VALID_PORTABLE = {
                 "developerName": "Example",
                 "category": "Developer Tools",
                 "capabilities": ["Check notes"],
+                "websiteURL": "https://example.com",
                 "supportURL": "https://example.com/support",
+                "privacyPolicyURL": "https://example.com/privacy",
+                "termsOfServiceURL": "https://example.com/terms",
                 "defaultPrompt": ["Check my notes"],
                 "composerIcon": "./assets/icon.png",
                 "logo": "./assets/icon.png",
@@ -425,6 +428,14 @@ class CheckSkillTests(unittest.TestCase):
             root = add_portable_plugin(build_valid_repo(tmp), manifest)
             problems = self.run_root(root)
             self.assert_has_error(problems, "HTTPS")
+
+    def test_portable_terms_url_required(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = json.loads(json.dumps(VALID_PORTABLE))
+            del manifest["extensions"]["com.openai"]["interface"]["termsOfServiceURL"]
+            root = add_portable_plugin(build_valid_repo(tmp), manifest)
+            problems = self.run_root(root)
+            self.assert_has_error(problems, "interface.termsOfServiceURL is required")
 
     def test_portable_too_many_prompts(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -48,7 +48,8 @@ MAX_COMPAT = 500
 MAX_BODY_LINES = 500
 
 # The portable plugin.json read by Codex and the ChatGPT / Codex Plugins
-# Directory. Limits are from developers.openai.com/plugins/deploy/submission.
+# Directory. Limits are from developers.openai.com/plugins/deploy/submission;
+# the four URLs are required by the directory's upload check.
 PORTABLE_SCHEMA = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
 PORTABLE_KEYS = {
     "$schema",
@@ -640,6 +641,7 @@ class Checker:
         for key in OPENAI_URL_KEYS:
             value = interface.get(key)
             if value is None:
+                self.add(path, 1, "interface.%s is required" % key)
                 continue
             if not isinstance(value, str) or not value.startswith("https://"):
                 self.add(

@@ -37,6 +37,7 @@
         "websiteURL": "https://github.com/morganlinton/BeautifulRust",
         "supportURL": "https://github.com/morganlinton/BeautifulRust/issues",
         "privacyPolicyURL": "https://github.com/morganlinton/BeautifulRust/blob/main/PRIVACY.md",
+        "termsOfServiceURL": "https://github.com/morganlinton/BeautifulRust/blob/main/LICENSE",
         "defaultPrompt": [
           "Review this Rust crate and list what to fix first",
           "Port this Python module to idiomatic Rust",
