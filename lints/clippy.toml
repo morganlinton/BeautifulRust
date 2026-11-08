@@ -6,7 +6,7 @@
 # third mode; use a two-variant enum or two methods instead.
 max-fn-params-bools = 0
 
-# Allow unwrap, expect, and printing in tests, where a panic is the assertion.
+# Allow unwrap and printing in tests, where a panic is the assertion. lints.toml
+# allows expect everywhere, so allow-expect-in-tests would have no effect.
 allow-unwrap-in-tests = true
-allow-expect-in-tests = true
 allow-print-in-tests = true

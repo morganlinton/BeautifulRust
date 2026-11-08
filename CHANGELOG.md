@@ -6,6 +6,13 @@ All notable changes to this project are listed here. Versions follow
 
 ## [Unreleased]
 
+### Fixed
+
+- `lints/clippy.toml` set `allow-expect-in-tests`, which does nothing while
+  `lints/lints.toml` allows `expect_used` everywhere, so it's gone.
+  `scripts/check-lints.sh` now fails if a `clippy.toml` key configures only lints the
+  table allows, or a key it doesn't know. Reported in #11.
+
 ## [1.6.0] - 2026-11-08
 
 The Beautiful Rust MCP server, and a Codex and ChatGPT plugin that uses it. Thanks to
