@@ -75,9 +75,11 @@ feature list of the newest version, and whether the crate exists.
   files cargo reads, one line of JSON per version. Cached at the edge and refreshed
   with `If-None-Match`, so repeated lookups don't reach crates.io.
 - `openWorldHint: true` (reads an outside service).
-- To verify before building: crates.io's data-access policy (User-Agent and rate
-  limits). The page didn't render for automated fetches, so it needs a look in a
-  browser.
+- Checked 2026-11-08 against [crates.io's data-access policy](https://crates.io/data-access):
+  the sparse index is the first access method it recommends, and "No rate limits are
+  required" for it. The 1 request/second limit and identifying User-Agent apply to the
+  crates.io API, which we don't call; we send a User-Agent with the repository link
+  anyway.
 
 ### Hosting
 
@@ -241,7 +243,7 @@ Negative (the tools should not be called):
 
 ## Build order
 
-1. Confirm crates.io's data-access policy in a browser, and pick the domain (for example
+1. Confirm crates.io's data-access policy (done: the sparse index has no limits), and pick the domain (for example
    a subdomain of the Beautiful Rust website) and the hosting account (Vercel, decided).
 2. Build phase 1: the data script, the function, tests, and the challenge route. Deploy.
 3. Update `PRIVACY.md`, add `mcp.json`, bump the plugin to 1.6.0, and add the review
