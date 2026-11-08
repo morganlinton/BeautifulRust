@@ -71,7 +71,23 @@ async function handleMcp(request: Request): Promise<Response> {
     maxRequestBodySize: MAX_BODY_BYTES,
   });
   await server.connect(transport);
-  return transport.handleRequest(request);
+  return transport.handleRequest(withMcpAccept(request));
+}
+
+/**
+ * The SDK rejects a POST with 406 unless Accept lists both application/json
+ * and text/event-stream, as the spec asks of clients. This server only ever
+ * answers with JSON, so a client that sends `application/json`, `*\/*`, or no
+ * Accept at all can be served; OpenAI's directory scanner is one such client.
+ */
+export function withMcpAccept(request: Request): Request {
+  const accept = request.headers.get("Accept") ?? "";
+  if (accept.includes("application/json") && accept.includes("text/event-stream")) {
+    return request;
+  }
+  const headers = new Headers(request.headers);
+  headers.set("Accept", "application/json, text/event-stream");
+  return new Request(request, { headers });
 }
 
 function withCors(response: Response): Response {

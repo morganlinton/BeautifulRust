@@ -35,6 +35,25 @@ test("answers MCP initialize and tools/list with CORS headers", async () => {
   assert.deepEqual(names, ["explain_lint", "get_crate_versions", "search_guidance"]);
 });
 
+test("serves clients that don't list both Accept types", async () => {
+  for (const accept of ["application/json", "*/*", "text/event-stream", null]) {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (accept !== null) {
+      headers.Accept = accept;
+    }
+    const response = await handleRequest(
+      new Request(`${BASE}/mcp`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+      }),
+      {},
+    );
+    assert.equal(response.status, 200, `Accept: ${accept}`);
+    assert.equal((await json(response)).result.tools.length, 3, `Accept: ${accept}`);
+  }
+});
+
 test("rejects GET on /mcp", async () => {
   const response = await handleRequest(new Request(`${BASE}/mcp`), {});
   assert.equal(response.status, 405);
