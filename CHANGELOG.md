@@ -6,6 +6,11 @@ All notable changes to this project are listed here. Versions follow
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-08
+
+The Beautiful Rust MCP server, and a Codex and ChatGPT plugin that uses it. Thanks to
+@Castor6 for asking for the Codex plugin.
+
 ### Added
 
 - **A Codex and ChatGPT plugin.** A portable `plugin.json` at the repo root, with the
@@ -16,11 +21,11 @@ All notable changes to this project are listed here. Versions follow
   and `scripts/check-skill.py` now checks the manifest against OpenAI's field limits and
   keeps its version in step with the Claude Code manifest. `PRIVACY.md` states that the
   skills collect nothing. Requested by @Castor6 in #7.
-- **An MCP server, not yet deployed.** `mcp/` is a Vercel Function with three
-  read-only tools: `search_guidance` returns the matching sections of the skills and
-  reference digests with links and sources, `explain_lint` explains any rustc or clippy
-  lint and how `lints/lints.toml` sets it, and `get_crate_versions` reads the crates.io
-  index for a crate's newest version, minimum Rust version, and features.
+- **An MCP server** at `https://mcp.beautifulrust.dev/mcp`. `mcp/` is a Vercel Function
+  with three read-only tools: `search_guidance` returns the matching sections of the
+  skills and reference digests with links and sources, `explain_lint` explains any rustc
+  or clippy lint and how `lints/lints.toml` sets it, and `get_crate_versions` reads the
+  crates.io index for a crate's newest version, minimum Rust version, and features.
   `scripts/build-mcp-data.py` builds its data from the skills and the installed
   toolchain, and CI type-checks, bundles, and tests it. The plan is in
   `docs/mcp-server-plan.md`.
@@ -188,7 +193,8 @@ First release.
 - Packaged as a Claude Code plugin that is its own marketplace.
 - MIT license, source attribution, and a plugin icon.
 
-[Unreleased]: https://github.com/morganlinton/BeautifulRust/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/morganlinton/BeautifulRust/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/morganlinton/BeautifulRust/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/morganlinton/BeautifulRust/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/morganlinton/BeautifulRust/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/morganlinton/BeautifulRust/compare/v1.2.0...v1.3.0

@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "beautiful-rust",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Write, review, port, and enforce idiomatic Rust: three skills distilled from the Google Rust Style Guide, the Rust API Guidelines, Effective Rust, Rust Design Patterns, and Microsoft's Pragmatic Rust Guidelines, plus a drop-in clippy config.",
   "author": {
     "name": "Morgan Linton",
@@ -26,13 +26,16 @@
       "interface": {
         "displayName": "Beautiful Rust",
         "shortDescription": "Write, review, and port Rust",
-        "longDescription": "Three skills for Rust developers, distilled from the Google Rust Style Guide, the Rust API Guidelines, Effective Rust, Rust Design Patterns, and Microsoft's Pragmatic Rust Guidelines.\n\nrust-best-practices guides new Rust code: error handling, API design, ownership, traits, async, unsafe and FFI, tests, and docs. It includes guidance for the Bevy game engine.\n\nrust-review reviews a file, crate, or diff and returns a prioritized report. Every finding cites a file and line, the rule it breaks, and the smallest fix.\n\nrust-port ports C, C++, Python, Go, JavaScript, or TypeScript to idiomatic Rust with the same behavior. It ports the original tests first and writes a PORTING.md that lists every deliberate difference.\n\nThe skills contain instructions and reference text only. They make no network calls and collect no data. When a Rust toolchain is available, the skills run cargo fmt, cargo clippy, and cargo test on your project; without one, they work from the code alone. A drop-in clippy config is available in the GitHub repository.",
+        "longDescription": "Three skills for Rust developers, distilled from the Google Rust Style Guide, the Rust API Guidelines, Effective Rust, Rust Design Patterns, and Microsoft's Pragmatic Rust Guidelines.\n\nrust-best-practices guides new Rust code: error handling, API design, ownership, traits, async, unsafe and FFI, tests, and docs. It includes guidance for the Bevy game engine.\n\nrust-review reviews a file, crate, or diff and returns a prioritized report. Every finding cites a file and line, the rule it breaks, and the smallest fix.\n\nrust-port ports C, C++, Python, Go, JavaScript, or TypeScript to idiomatic Rust with the same behavior. It ports the original tests first and writes a PORTING.md that lists every deliberate difference.\n\nThe plugin also connects to the Beautiful Rust MCP server, a read-only service with three tools. search_guidance quotes the matching rules word for word, with links and their source guide. explain_lint explains any rustc or clippy lint and how Beautiful Rust's clippy config sets it. get_crate_versions reads crates.io for a crate's newest version, minimum Rust version, and features, so suggestions never name a version that doesn't exist. The server needs no account, sees only each tool's input, and stores nothing.\n\nWhen a Rust toolchain is available, the skills run cargo fmt, cargo clippy, and cargo test on your project; without one, they work from the code and the server's lookups. A drop-in clippy config is available in the GitHub repository.",
         "developerName": "Morgan Linton",
         "category": "Developer Tools",
         "capabilities": [
           "Write idiomatic Rust",
           "Review Rust code with cited rules",
-          "Port code to Rust with the same behavior"
+          "Port code to Rust with the same behavior",
+          "Quote Rust rules with their sources",
+          "Explain clippy lints",
+          "Look up current crate versions"
         ],
         "websiteURL": "https://github.com/morganlinton/BeautifulRust",
         "supportURL": "https://github.com/morganlinton/BeautifulRust/issues",
@@ -48,7 +51,7 @@
         "logo": "./assets/icon.png"
       },
       "publication": {
-        "release_notes": "Bevy support, a Claude Code vs Codex benchmark, and every Rust example compiled in CI."
+        "release_notes": "Adds the Beautiful Rust MCP server: rule search, clippy lint explanations, and current crate versions from crates.io."
       },
       "review": {
         "test_cases": {

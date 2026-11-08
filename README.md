@@ -334,7 +334,7 @@ BeautifulRust/
 │   ├── examples.json          context that lets fragment examples compile
 │   ├── package-openai-plugin.py   builds the ChatGPT / Codex directory ZIP
 │   └── build-mcp-data.py      builds the MCP server's search index and lint catalog
-├── mcp/                       MCP server (Vercel Function), not deployed yet
+├── mcp/                       MCP server (Vercel Function) at mcp.beautifulrust.dev
 ├── benchmarks/
 │   └── cross-agent-2026-10/   Claude Code vs Codex, with and without the skills
 ├── examples/

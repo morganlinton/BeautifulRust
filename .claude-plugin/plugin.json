@@ -1,6 +1,6 @@
 {
   "name": "beautiful-rust",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Write, review, port, and enforce idiomatic Rust: three skills distilled from the Google Rust Style Guide, the Rust API Guidelines, Effective Rust, Rust Design Patterns, and Microsoft's Pragmatic Rust Guidelines, plus a drop-in clippy config.",
   "license": "MIT",
   "author": {
