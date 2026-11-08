@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Build the ZIP uploaded to the ChatGPT / Codex Plugins Directory.
 
-The package holds the portable plugin.json, the skills and their references,
-the icon, and the license. Eval cases stay out: they are test fixtures with
+The package holds the portable plugin.json, the MCP server declaration
+(mcp.json, when present), the skills and their references, the icon, and the
+license. Eval cases stay out: they are test fixtures with
 planted bugs, not instructions for the agent. The ZIP is reproducible, so the
 same commit always builds the same bytes.
 
@@ -20,6 +21,9 @@ from typing import List, Optional, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TOP_LEVEL = ("plugin.json", "LICENSE", "PRIVACY.md")
+# Packaged when present. OpenAI accepts an MCP server only in a plugin's first
+# upload, so a package meant for review should include it.
+OPTIONAL_TOP_LEVEL = ("mcp.json",)
 EXCLUDED_DIRS = {"evals", "__pycache__"}
 EXCLUDED_NAMES = {".DS_Store"}
 # 1980-01-01, the earliest timestamp a ZIP entry can hold.
@@ -31,6 +35,7 @@ def package_files(root: Path) -> List[Path]:
     manifest = json.loads((root / "plugin.json").read_text(encoding="utf-8"))
     interface = manifest["extensions"]["com.openai"]["interface"]
     files = {Path(name) for name in TOP_LEVEL}
+    files.update(Path(name) for name in OPTIONAL_TOP_LEVEL if (root / name).is_file())
     for key in ("composerIcon", "logo", "composerIconDark", "logoDark"):
         if key in interface:
             files.add(Path(interface[key]))

@@ -24,6 +24,11 @@ All notable changes to this project are listed here. Versions follow
   `scripts/build-mcp-data.py` builds its data from the skills and the installed
   toolchain, and CI type-checks and tests it. The plan is in
   `docs/mcp-server-plan.md`.
+- **The plugin's MCP declaration and review cases.** `mcp.json` points the ChatGPT /
+  Codex plugin at `https://mcp.beautifulrust.dev/mcp`, `plugin.json` carries the 5
+  positive and 3 negative test cases OpenAI's review needs, and the packaged ZIP includes
+  `mcp.json`. `scripts/check-skill.py` checks both: one remote HTTPS server with no
+  headers, and exactly 5 and 3 complete test cases. `PRIVACY.md` covers the server.
 
 ## [1.5.0] - 2026-10-30
 

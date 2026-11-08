@@ -45,6 +45,12 @@ class PackageTests(unittest.TestCase):
             if (skill / "SKILL.md").is_file():
                 self.assertIn("skills/%s/SKILL.md" % skill.name, names)
 
+    def test_package_includes_mcp_declaration(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _, names = self.build(tmp)
+        self.assertEqual((REPO_ROOT / "mcp.json").is_file(), "mcp.json" in names)
+        self.assertFalse([n for n in names if n.startswith("mcp/")], names)
+
     def test_package_leaves_out_evals(self):
         with tempfile.TemporaryDirectory() as tmp:
             _, names = self.build(tmp)

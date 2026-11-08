@@ -166,6 +166,41 @@ def portable_with(**interface):
     return manifest
 
 
+VALID_MCP = {
+    "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+    "mcpServers": {"demo": {"type": "streamable-http", "url": "https://example.com/mcp"}},
+}
+
+
+def review_cases(positive=5, negative=3):
+    return {
+        "test_cases": {
+            "positive": [
+                {
+                    "description": "Case %d" % i,
+                    "prompt": "Check note %d" % i,
+                    "tools_triggered": "check_notes",
+                    "expected_behavior": "Returns note %d." % i,
+                }
+                for i in range(positive)
+            ],
+            "negative": [
+                {"description": "Off topic %d" % i, "prompt": "Weather %d?" % i}
+                for i in range(negative)
+            ],
+        }
+    }
+
+
+def add_mcp_plugin(root, mcp=None, review=None):
+    manifest = json.loads(json.dumps(VALID_PORTABLE))
+    if review is not None:
+        manifest["extensions"]["com.openai"]["review"] = review
+    root = add_portable_plugin(root, manifest)
+    write(Path(root) / "mcp.json", json.dumps(mcp or VALID_MCP, indent=2))
+    return root
+
+
 def build_valid_repo(root):
     root = Path(root)
     write(root / "README.md", VALID_README)
@@ -456,6 +491,50 @@ class CheckSkillTests(unittest.TestCase):
             root = add_portable_plugin(build_valid_repo(tmp), icon=(64, 32))
             problems = self.run_root(root)
             self.assert_has_error(problems, "64x32")
+
+    def test_mcp_plugin_with_review_cases_is_clean(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = add_mcp_plugin(build_valid_repo(tmp), review=review_cases())
+            self.assertEqual(error_messages(self.run_root(root)), [])
+
+    def test_mcp_plugin_requires_review_cases(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = add_mcp_plugin(build_valid_repo(tmp))
+            problems = self.run_root(root)
+            self.assert_has_error(problems, "review.test_cases is required")
+
+    def test_mcp_review_needs_exact_counts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = add_mcp_plugin(build_valid_repo(tmp), review=review_cases(4, 3))
+            problems = self.run_root(root)
+            self.assert_has_error(problems, "positive has 4 cases; review needs exactly 5")
+
+    def test_mcp_review_positive_case_needs_tools(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            review = review_cases()
+            del review["test_cases"]["positive"][2]["tools_triggered"]
+            root = add_mcp_plugin(build_valid_repo(tmp), review=review)
+            problems = self.run_root(root)
+            self.assert_has_error(problems, "positive[3] is missing tools_triggered")
+
+    def test_mcp_server_must_be_remote_https_without_headers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            mcp = json.loads(json.dumps(VALID_MCP))
+            mcp["mcpServers"]["demo"].update(
+                url="http://example.com/mcp", headers={"Authorization": "x"}
+            )
+            root = add_mcp_plugin(build_valid_repo(tmp), mcp, review_cases())
+            problems = self.run_root(root)
+            self.assert_has_error(problems, "url must be HTTPS")
+            self.assert_has_error(problems, "must not set headers")
+
+    def test_mcp_declares_exactly_one_server(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            mcp = json.loads(json.dumps(VALID_MCP))
+            mcp["mcpServers"]["other"] = mcp["mcpServers"]["demo"]
+            root = add_mcp_plugin(build_valid_repo(tmp), mcp, review_cases())
+            problems = self.run_root(root)
+            self.assert_has_error(problems, "exactly one server")
 
     def test_place_files_missing_target(self):
         with tempfile.TemporaryDirectory() as tmp:

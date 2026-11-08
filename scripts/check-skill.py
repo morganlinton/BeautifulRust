@@ -73,6 +73,15 @@ OPENAI_TEXT_LIMITS = (
 )
 OPENAI_URL_KEYS = ("websiteURL", "supportURL", "privacyPolicyURL", "termsOfServiceURL")
 OPENAI_ICON_KEYS = ("composerIcon", "logo", "composerIconDark", "logoDark")
+# mcp.json, the plugin's MCP server declaration. A public submission needs one
+# remote server with no headers, and its first review needs exactly 5 positive
+# and 3 negative test cases in extensions.com.openai.review.test_cases.
+MCP_SCHEMA = "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json"
+REVIEW_CASE_COUNTS = (("positive", 5), ("negative", 3))
+REVIEW_CASE_FIELDS = {
+    "positive": ("description", "prompt", "tools_triggered", "expected_behavior"),
+    "negative": ("description", "prompt"),
+}
 OPENAI_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".svg"}
 HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 MAX_OPENAI_IMAGE_BYTES = 5 * 1024 * 1024
@@ -625,6 +634,100 @@ class Checker:
             self.add(path, 1, "missing extensions.com.openai.interface")
             return
         self._check_openai_interface(path, interface)
+        mcp = path.parent / "mcp.json"
+        has_mcp = mcp.is_file()
+        if has_mcp:
+            self._check_mcp_declaration(mcp)
+        review = openai.get("review")
+        if review is not None or has_mcp:
+            self._check_review_cases(path, review, require_counts=has_mcp)
+
+    def _check_mcp_declaration(self, path: Path) -> None:
+        data = self._load_json(path)
+        if not isinstance(data, dict):
+            if data is not None:
+                self.add(path, 1, "must be a JSON object")
+            return
+        extra = sorted(set(data) - {"$schema", "mcpServers"})
+        if extra:
+            self.add(path, 1, "mcp.json has unknown keys: %s" % ", ".join(extra))
+        if data.get("$schema") != MCP_SCHEMA:
+            self.add(
+                path, _json_key_line(path, "$schema"), "$schema must be %s" % MCP_SCHEMA
+            )
+        servers = data.get("mcpServers")
+        if not isinstance(servers, dict) or len(servers) != 1:
+            self.add(
+                path,
+                _json_key_line(path, "mcpServers"),
+                "mcpServers must declare exactly one server",
+            )
+            return
+        for server_name, server in servers.items():
+            line = _json_key_line(path, server_name)
+            if not isinstance(server, dict):
+                self.add(path, line, "server %r must be an object" % server_name)
+                continue
+            extra = sorted(set(server) - {"type", "url", "headers"})
+            if extra:
+                self.add(
+                    path,
+                    line,
+                    "server %r has unknown keys: %s" % (server_name, ", ".join(extra)),
+                )
+            if server.get("type") != "streamable-http":
+                self.add(
+                    path, line, "server %r must have type streamable-http" % server_name
+                )
+            url = server.get("url")
+            if not isinstance(url, str) or not url.startswith("https://"):
+                self.add(path, line, "server %r url must be HTTPS" % server_name)
+            if server.get("headers"):
+                self.add(
+                    path,
+                    line,
+                    "server %r must not set headers; public submission rejects them"
+                    % server_name,
+                )
+
+    def _check_review_cases(
+        self, path: Path, review: Any, require_counts: bool
+    ) -> None:
+        line = _json_key_line(path, "review")
+        cases = review.get("test_cases") if isinstance(review, dict) else None
+        if not isinstance(cases, dict):
+            self.add(
+                path,
+                line,
+                "extensions.com.openai.review.test_cases is required with mcp.json",
+            )
+            return
+        for kind, count in REVIEW_CASE_COUNTS:
+            items = cases.get(kind)
+            if not isinstance(items, list):
+                self.add(path, line, "review.test_cases.%s must be a list" % kind)
+                continue
+            if require_counts and len(items) != count:
+                self.add(
+                    path,
+                    line,
+                    "review.test_cases.%s has %d cases; review needs exactly %d"
+                    % (kind, len(items), count),
+                )
+            for index, item in enumerate(items, 1):
+                fields = item if isinstance(item, dict) else {}
+                missing = [
+                    key
+                    for key in REVIEW_CASE_FIELDS[kind]
+                    if not isinstance(fields.get(key), str) or not fields[key].strip()
+                ]
+                if missing:
+                    self.add(
+                        path,
+                        line,
+                        "review.test_cases.%s[%d] is missing %s"
+                        % (kind, index, ", ".join(missing)),
+                    )
 
     def _check_openai_interface(self, path: Path, interface: Dict[str, Any]) -> None:
         for key, limit in OPENAI_TEXT_LIMITS:

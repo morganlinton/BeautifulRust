@@ -49,6 +49,56 @@
       },
       "publication": {
         "release_notes": "Bevy support, a Claude Code vs Codex benchmark, and every Rust example compiled in CI."
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Newest crate version and its minimum Rust version",
+              "prompt": "What's the latest version of serde, and what Rust version does it need?",
+              "tools_triggered": "get_crate_versions",
+              "expected_behavior": "Names serde's newest non-yanked version from the crates.io index and its minimum Rust version, or says the crate does not declare one."
+            },
+            {
+              "description": "Explain a clippy lint and the plugin's setting",
+              "prompt": "What does clippy's unwrap_used lint catch, and does Beautiful Rust turn it on?",
+              "tools_triggered": "explain_lint",
+              "expected_behavior": "Explains that unwrap_used flags calls to unwrap on Option and Result, says Beautiful Rust's lints.toml sets it to warn, and gives the suggested fix: use ? or expect with a reason."
+            },
+            {
+              "description": "Quote a rule with its source",
+              "prompt": "What does Beautiful Rust say about bool parameters?",
+              "tools_triggered": "search_guidance",
+              "expected_behavior": "Quotes the rule to replace bool parameters with an enum or two methods, links the section it comes from, and names the source style guide."
+            },
+            {
+              "description": "Check a crate exists before suggesting it",
+              "prompt": "Is there a crate called serde_jsonn on crates.io?",
+              "tools_triggered": "get_crate_versions",
+              "expected_behavior": "Reports that no crate with that name exists on crates.io instead of inventing a version."
+            },
+            {
+              "description": "Find guidance for an error-handling question",
+              "prompt": "Should my Rust library return anyhow::Error or define its own error type?",
+              "tools_triggered": "search_guidance",
+              "expected_behavior": "Returns the error-handling sections that recommend a dedicated error type, such as one built with thiserror, for libraries and anyhow for applications, with links to each section."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Not Rust",
+              "prompt": "Write a Python script that renames files in a folder."
+            },
+            {
+              "description": "Write action the tools cannot take",
+              "prompt": "Publish my crate to crates.io."
+            },
+            {
+              "description": "Unrelated topic",
+              "prompt": "What's the weather in Los Angeles?"
+            }
+          ]
+        }
       }
     }
   }

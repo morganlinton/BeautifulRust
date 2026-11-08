@@ -8,6 +8,7 @@
   "scripts": {
     "data": "python3 ../scripts/build-mcp-data.py",
     "dev": "wrangler dev",
+    "predeploy": "npm run data",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
     "test": "node --test 'test/*.test.ts'"
