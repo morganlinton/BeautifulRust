@@ -2,7 +2,8 @@
 # Prove the skill's [lints] table fires: every // expect: lint in the check
 # crate must report on its marked line, nothing else may report, and the
 # table in lints/lints.toml must match the check crate's Cargo.toml. Clippy reads
-# lints/clippy.toml, the same file users copy next to their Cargo.toml.
+# lints/clippy.toml, the same file users copy next to their Cargo.toml, and every
+# key in it must configure a lint the table enables.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -10,6 +11,7 @@ TABLE="$ROOT/lints/lints.toml"
 CRATE="$ROOT/lints/check"
 SRC="$CRATE/src/lib.rs"
 MANIFEST="$CRATE/Cargo.toml"
+CLIPPY_CONF="$ROOT/lints/clippy.toml"
 
 if ! command -v cargo >/dev/null 2>&1; then
   echo "check-lints: cargo not found on PATH" >&2
@@ -36,13 +38,14 @@ cargo clippy --manifest-path "$MANIFEST" --target-dir "$TARGET" --message-format
 CLIPPY_STATUS=$?
 set -e
 
-python3 - "$TABLE" "$MANIFEST" "$SRC" "$JSON" "$CLIPPY_STATUS" "$TARGET/clippy.err" <<'PY'
+python3 - "$TABLE" "$MANIFEST" "$SRC" "$JSON" "$CLIPPY_STATUS" "$TARGET/clippy.err" "$CLIPPY_CONF" <<'PY'
 import json
 import re
 import sys
+import tomllib
 from pathlib import Path
 
-table_path, manifest_path, src_path, json_path, status_s, err_path = sys.argv[1:]
+table_path, manifest_path, src_path, json_path, status_s, err_path, conf_path = sys.argv[1:]
 clippy_status = int(status_s)
 
 table = Path(table_path).read_text()
@@ -55,6 +58,34 @@ failed = False
 if table not in manifest:
     print("lints table drifted: lints/lints.toml is not byte-identical in the check crate Cargo.toml")
     failed = True
+
+# Each clippy.toml key tunes specific lints, given with the group they belong to. A key
+# whose lints are all allowed does nothing, so fail rather than ship an inert setting.
+CONF_LINTS = {
+    "max-fn-params-bools": [("fn_params_excessive_bools", "pedantic")],
+    "allow-unwrap-in-tests": [("unwrap_used", "restriction")],
+    "allow-expect-in-tests": [("expect_used", "restriction")],
+    "allow-print-in-tests": [("print_stdout", "restriction"), ("print_stderr", "restriction")],
+}
+
+clippy_levels = tomllib.loads(table).get("lints", {}).get("clippy", {})
+
+
+def clippy_level(lint: str, group: str) -> str:
+    # Individual settings win over groups (the table gives groups priority -1); a lint
+    # in a group the table doesn't set keeps clippy's default, allow for both groups above.
+    setting = clippy_levels.get(lint, clippy_levels.get(group, "allow"))
+    return setting["level"] if isinstance(setting, dict) else setting
+
+
+for key in tomllib.loads(Path(conf_path).read_text()):
+    if key not in CONF_LINTS:
+        print(f"lints/clippy.toml: {key} is not mapped to a lint in check-lints.sh; add it to CONF_LINTS")
+        failed = True
+    elif all(clippy_level(lint, group) == "allow" for lint, group in CONF_LINTS[key]):
+        lints = ", ".join(lint for lint, _ in CONF_LINTS[key])
+        print(f"lints/clippy.toml: {key} has no effect because lints/lints.toml allows {lints}")
+        failed = True
 
 rule_for = {}
 last_rule = ""
