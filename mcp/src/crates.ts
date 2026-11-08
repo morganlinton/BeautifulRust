@@ -8,8 +8,6 @@ const NAME_RE = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
 const RECENT_VERSIONS = 10;
 const MAX_INDEX_BYTES = 8 * 1024 * 1024;
 const TIMEOUT_MS = 8000;
-// Seconds Cloudflare keeps an index file at the edge before asking again.
-const CACHE_TTL = 300;
 
 interface IndexLine {
   vers: string;
@@ -81,9 +79,7 @@ async function fetchIndex(name: string, fetcher: Fetcher): Promise<string | null
     response = await fetcher(`${INDEX_URL}/${indexPath(name)}`, {
       headers: { "User-Agent": USER_AGENT },
       signal: AbortSignal.timeout(TIMEOUT_MS),
-      // Workers-only: cache at the edge. Other runtimes ignore it.
-      cf: { cacheTtl: CACHE_TTL, cacheEverything: true },
-    } as RequestInit);
+    });
   } catch (error) {
     throw new CrateLookupError(`crates.io index unreachable: ${String(error)}`);
   }

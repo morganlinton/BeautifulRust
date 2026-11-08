@@ -7,9 +7,10 @@
   "type": "module",
   "scripts": {
     "data": "python3 ../scripts/build-mcp-data.py",
-    "dev": "wrangler dev",
-    "predeploy": "npm run data",
-    "deploy": "wrangler deploy",
+    "bundle": "node scripts/bundle.mjs",
+    "build": "npm run data && npm run bundle",
+    "dev": "npm run build && npx --yes vercel@65.2.0 dev",
+    "deploy": "npx --yes vercel@65.2.0 build --prod && npx --yes vercel@65.2.0 deploy --prebuilt --prod",
     "typecheck": "tsc --noEmit",
     "test": "node --test 'test/*.test.ts'"
   },
@@ -18,9 +19,11 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "5.20261018.1",
     "@types/node": "22.20.5",
-    "typescript": "7.0.2",
-    "wrangler": "4.151.1"
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }

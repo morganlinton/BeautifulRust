@@ -53,5 +53,7 @@ jobs:
       - run: npm ci
       - name: Type-check the MCP server
         run: npm run typecheck
+      - name: Bundle the MCP server for Vercel
+        run: npm run bundle
       - name: Test the MCP server
         run: npm test

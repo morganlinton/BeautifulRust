@@ -1,4 +1,6 @@
 node_modules/
 data/
-.wrangler/
-.dev.vars
+build/
+public/
+.vercel/
+.env*

@@ -1,6 +1,8 @@
 # Plan: a Beautiful Rust MCP server
 
 Status: phase 1 is built in `mcp/` and tested locally, not deployed. Written 2026-11-02.
+On 2026-11-08 hosting moved from Cloudflare Workers to Vercel (Pro plan), where the
+Beautiful Rust website already runs; see [Hosting](#hosting).
 
 ## Why
 
@@ -79,8 +81,26 @@ feature list of the newest version, and whether the crate exists.
 
 ### Hosting
 
-Cloudflare Workers, using the Agents SDK's stateless `createMcpHandler`, which is
-Cloudflare's current template for remote MCP servers over streamable HTTP.
+**Vercel (chosen 2026-11-08).** One Vercel Function on the Pro plan ($20/month), in the
+same account as the website. It runs the MCP SDK's Web-standard streamable HTTP
+transport, statelessly. Why Vercel over Cloudflare: the website and `beautifulrust.dev`
+already live there, so the DNS doesn't move and there's one account. Hobby (free) is for
+non-commercial use only, so the server runs on Pro to be safe.
+
+How it's built and deployed:
+
+- `npm run build` builds the data (it needs a Rust toolchain with clippy) and bundles
+  `src/` with esbuild into `build/server.mjs`. `api/index.mjs`, the function, only
+  re-exports that bundle, so Vercel never compiles our TypeScript.
+- Vercel's build machines have no Rust, so deploys are prebuilt: `npm run deploy` runs
+  `vercel build` locally and uploads the output with `vercel deploy --prebuilt`.
+- `vercel.json` rewrites every path to the function, which routes `/mcp`,
+  `/.well-known/openai-apps-challenge`, and `/` itself.
+- crates.io answers are cached in memory for five minutes per warm instance (Fluid
+  compute reuses instances), in place of Cloudflare's edge cache.
+- The domain is `mcp.beautifulrust.dev`, added to the Vercel project.
+
+The comparison that first picked Cloudflare, kept for reference:
 
 | | Free plan | Paid plan |
 |---|---|---|
@@ -96,18 +116,22 @@ paid plan removes the question. Phase 2 needs the paid plan anyway.
 
 ```
 mcp/
-├── src/index.ts           Worker: MCP handler, the three tools, the challenge route
+├── api/index.mjs          the Vercel Function; re-exports build/server.mjs
+├── src/index.ts           request router: MCP handler and the challenge route
 ├── src/search.ts          ranking over the guidance index
-├── src/crates.ts          sparse-index fetch, cache, and parse
+├── src/crates.ts          sparse-index fetch and parse
+├── src/cache.ts           in-memory cache for crates.io answers
 ├── data/                  generated at deploy time, not committed
 ├── test/                  unit tests per tool, plus MCP protocol tests
-└── wrangler.toml
+├── scripts/bundle.mjs     esbuild bundle of src/ and data/
+└── vercel.json
 scripts/build-mcp-data.py  skills -> guidance index; toolchain + lints.toml -> lint catalog
 mcp.json                   plugin declaration for OpenAI
 ```
 
 CI builds the data, type-checks, and runs the tests on every pull request. A deploy job
-on `main` publishes the Worker with a Cloudflare API token stored as an Actions secret.
+on `main` could later publish the function with a Vercel token stored as an Actions
+secret; for now Morgan deploys from a Mac with `npm run deploy`.
 
 ## Phase 2: `check_rust`
 
@@ -141,9 +165,15 @@ User code runs in a throwaway container with no network.
 
 ### Hosting options
 
+With phase 1 on Vercel, **Vercel Sandbox** is now the natural first choice: throwaway
+microVMs in the same account, with a firewall that can block all network access. Its
+pricing changed several times in 2026, so the cost estimate below (made for Cloudflare)
+needs redoing before phase 2.
+
+
 | Option | Fit | Price |
 |---|---|---|
-| **Cloudflare Sandbox SDK / Containers** (recommended) | Same account and Worker as phase 1. Each sandbox is "a microVM with its own kernel and network", and internet access can be turned off. Scheduling is in public beta. | Workers Paid ($5/mo). Includes 375 vCPU-minutes, 25 GiB-hours of memory, and 200 GB-hours of disk per month. Then $0.000020 per vCPU-second, $0.0000025 per GiB-second, $0.00000007 per GB-second. |
+| Cloudflare Sandbox SDK / Containers (first pick before the move) | Same account and Worker as phase 1. Each sandbox is "a microVM with its own kernel and network", and internet access can be turned off. Scheduling is in public beta. | Workers Paid ($5/mo). Includes 375 vCPU-minutes, 25 GiB-hours of memory, and 200 GB-hours of disk per month. Then $0.000020 per vCPU-second, $0.0000025 per GiB-second, $0.00000007 per GB-second. |
 | E2B | A managed code sandbox. Easy API; a second vendor and account. | $0.000014 per vCPU-second and $0.0000045 per GiB-second. Free tier is a one-time $100 credit; Pro is $150/month plus usage. |
 | Fly.io Machines | Per-second billing, more setup, no free tier. | About $0.0000052/s for shared-cpu-2x with 2 GB. |
 | Self-hosted Rust Playground | Open source (MIT/Apache) with a working `/clippy` endpoint, but needs a Docker host, so it doesn't fit Workers or Fly Machines. | Cost of a VM. |
@@ -178,7 +208,7 @@ a global daily cap on checks keep a traffic spike from becoming a bill.
   throwaway container and is deleted when the check ends. Nothing is sold or shared.
 - **Logs:** request metadata only (tool name, duration, result status, and a hash of the
   anonymous user ID for rate limiting), kept 30 days. No code or query text is logged.
-- **Recipients:** Cloudflare as the host. `get_crate_versions` asks crates.io for public
+- **Recipients:** Vercel as the host. `get_crate_versions` asks crates.io for public
   index files and sends nothing about the user.
 
 ## Claude Code
@@ -212,8 +242,8 @@ Negative (the tools should not be called):
 ## Build order
 
 1. Confirm crates.io's data-access policy in a browser, and pick the domain (for example
-   a subdomain of the Beautiful Rust website) and the Cloudflare account.
-2. Build phase 1: the data script, the Worker, tests, and the challenge route. Deploy.
+   a subdomain of the Beautiful Rust website) and the hosting account (Vercel, decided).
+2. Build phase 1: the data script, the function, tests, and the challenge route. Deploy.
 3. Update `PRIVACY.md`, add `mcp.json`, bump the plugin to 1.6.0, and add the review
    cases to `plugin.json`.
 4. Delete the 1.5.0 draft, upload the new ZIP, and see whether the portal accepts it. If
@@ -225,8 +255,7 @@ Negative (the tools should not be called):
 ## Decisions for you
 
 - **Domain** for the server, for example `mcp.<website domain>`.
-- **Cloudflare account:** an existing one or a new one. Phase 2 needs the $5/month
-  plan.
+- **Hosting account:** decided: Vercel Pro ($20/month), shared with the website.
 - **Monthly spending cap** for phase 2, which sets the daily check limit.
 - **Crate allowlist** for `check_rust`.
 - **Submission timing:** upload after phase 1 as a test (recommended), or wait and

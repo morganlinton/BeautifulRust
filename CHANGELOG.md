@@ -16,13 +16,13 @@ All notable changes to this project are listed here. Versions follow
   and `scripts/check-skill.py` now checks the manifest against OpenAI's field limits and
   keeps its version in step with the Claude Code manifest. `PRIVACY.md` states that the
   skills collect nothing. Requested by @Castor6 in #7.
-- **An MCP server, not yet deployed.** `mcp/` is a Cloudflare Worker with three
+- **An MCP server, not yet deployed.** `mcp/` is a Vercel Function with three
   read-only tools: `search_guidance` returns the matching sections of the skills and
   reference digests with links and sources, `explain_lint` explains any rustc or clippy
   lint and how `lints/lints.toml` sets it, and `get_crate_versions` reads the crates.io
   index for a crate's newest version, minimum Rust version, and features.
   `scripts/build-mcp-data.py` builds its data from the skills and the installed
-  toolchain, and CI type-checks and tests it. The plan is in
+  toolchain, and CI type-checks, bundles, and tests it. The plan is in
   `docs/mcp-server-plan.md`.
 - **The plugin's MCP declaration and review cases.** `mcp.json` points the ChatGPT /
   Codex plugin at `https://mcp.beautifulrust.dev/mcp`, `plugin.json` carries the 5

@@ -32,12 +32,12 @@ account and no sign-in.
 - **What it does with them:** answers that one request. The server stores nothing, sets
   no cookies, and does not build a profile of you. Nothing is sold or shared for
   advertising.
-- **Logs:** the server's own code writes no logs. Cloudflare, which hosts the server,
+- **Logs:** the server's own code writes no logs. Vercel, which hosts the server,
   processes each request (including your IP address) to deliver it and protect against
-  abuse, under the [Cloudflare privacy policy](https://www.cloudflare.com/privacypolicy/).
-- **Recipients:** Cloudflare, as the host. For crate lookups, the server fetches public
+  abuse, under the [Vercel privacy policy](https://vercel.com/legal/privacy-policy).
+- **Recipients:** Vercel, as the host. For crate lookups, the server fetches public
   index files from crates.io by crate name and sends nothing about you. Answers from
-  crates.io are cached at Cloudflare's edge for five minutes.
+  crates.io are kept in the server's memory for five minutes.
 - **Retention:** request inputs are kept only for the time it takes to answer. Cached
   crates.io index files contain only public crate data.
 
