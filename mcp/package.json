@@ -10,7 +10,7 @@
     "bundle": "node scripts/bundle.mjs",
     "build": "npm run data && npm run bundle",
     "dev": "npm run build && npx --yes vercel@65.2.0 dev",
-    "deploy": "npx --yes vercel@65.2.0 build --prod && npx --yes vercel@65.2.0 deploy --prebuilt --prod",
+    "deploy": "npx --yes vercel@65.2.0 build --prod --yes && npx --yes vercel@65.2.0 deploy --prebuilt --prod",
     "typecheck": "tsc --noEmit",
     "test": "node --test 'test/*.test.ts'"
   },
