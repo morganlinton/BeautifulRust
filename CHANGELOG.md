@@ -6,6 +6,12 @@ All notable changes to this project are listed here. Versions follow
 
 ## [Unreleased]
 
+### Changed
+
+- `rust-review`'s "Respect intent" rule now says that when a doc comment or README states
+  the mechanism, the behavior is deliberate, and changes to it belong under Consider, not
+  Must fix. Contributed by @vonavikon in #13.
+
 ## [1.6.0] - 2026-11-08
 
 The Beautiful Rust MCP server, and a Codex and ChatGPT plugin that uses it. Thanks to
