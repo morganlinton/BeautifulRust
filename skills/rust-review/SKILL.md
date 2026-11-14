@@ -166,7 +166,8 @@ Rules for each finding:
   the lines, rather than eight findings.
 - **Respect intent.** If something looks deliberate, such as a documented quirk or a
   comment explaining it, mention it under Consider with the trade-off. Don't mark it
-  Must fix.
+  Must fix. Documentation counts: when a doc comment or README states the mechanism, the
+  behavior is deliberate. Weigh changes to it under Consider, not Must fix.
 - **Keep it proportionate.** For a short file, five to ten findings is plenty. Don't pad
   the list, and don't hide a real bug among style nits.
 - **"What's already good" is required.** It tells the author what to keep and makes the
