@@ -31,10 +31,18 @@ export interface CrateAnswer {
   latest: VersionInfo | null;
   latestFeatures: string[];
   latestPrerelease: VersionInfo | null;
+  latestCompatible: VersionInfo | null;
+  rustVersionQuery: string | null;
   recent: VersionInfo[];
   totalVersions: number;
   yankedVersions: number;
   url: string | null;
+  /**
+   * `rust-version` of the oldest non-yanked release. The text reply names it when
+   * nothing matches the caller's toolchain. It is not a schema field: `recent` is
+   * only the 10 newest versions, and the oldest release is often older than that.
+   */
+  oldestLiveRustVersion: string | null;
 }
 
 export type Fetcher = (url: string, init: RequestInit) => Promise<Response>;
@@ -57,9 +65,18 @@ export function indexPath(name: string): string {
   return `${lower.slice(0, 2)}/${lower.slice(2, 4)}/${lower}`;
 }
 
-export async function lookupCrate(name: string, fetcher: Fetcher): Promise<CrateAnswer> {
+export async function lookupCrate(
+  name: string,
+  fetcher: Fetcher,
+  options: { rustVersion?: string } = {},
+): Promise<CrateAnswer> {
   if (!isValidCrateName(name)) {
     throw new CrateLookupError(`"${name}" is not a valid crate name`);
+  }
+  // Reject before fetching. A bad toolchain can't change which index file we
+  // read, and the server surfaces this the same way as a bad crate name.
+  if (options.rustVersion !== undefined && !isValidRustVersion(options.rustVersion)) {
+    throw new CrateLookupError(`"${options.rustVersion}" is not a Rust version like 1.75`);
   }
   // crates.io treats - and _ as the same name, but the index file uses the
   // spelling the crate was published with.
@@ -67,7 +84,7 @@ export async function lookupCrate(name: string, fetcher: Fetcher): Promise<Crate
   for (const spelling of spellings) {
     const text = await fetchIndex(spelling, fetcher);
     if (text !== null) {
-      return summarize(text);
+      return summarize(text, options);
     }
   }
   return notFound(name);
@@ -96,7 +113,7 @@ async function fetchIndex(name: string, fetcher: Fetcher): Promise<string | null
   return text;
 }
 
-export function summarize(indexText: string): CrateAnswer {
+export function summarize(indexText: string, options: { rustVersion?: string } = {}): CrateAnswer {
   const lines: (IndexLine & { name: string })[] = indexText
     .split("\n")
     .filter((line) => line.trim().length > 0)
@@ -111,6 +128,17 @@ export function summarize(indexText: string): CrateAnswer {
   const pre = live.find((line) => isPrerelease(line.vers)) ?? null;
   const newerPre = pre && (!stable || compareSemver(pre.vers, stable.vers) > 0) ? pre : null;
   const latestLine = stable ?? newerPre;
+  // `live` is newest first, so the first match is the newest release this
+  // toolchain can build. Cargo's MSRV-aware resolver treats a missing
+  // rust-version as compatible, and yanked lines are already excluded.
+  const query = options.rustVersion ? options.rustVersion : null;
+  const compatible = query
+    ? (live.find(
+        (line) =>
+          !isPrerelease(line.vers) &&
+          (!line.rust_version || compareRustVersion(line.rust_version, query) <= 0),
+      ) ?? null)
+    : null;
   return {
     name,
     found: true,
@@ -119,10 +147,13 @@ export function summarize(indexText: string): CrateAnswer {
       ? Object.keys({ ...latestLine.features, ...latestLine.features2 }).sort()
       : [],
     latestPrerelease: newerPre ? info(newerPre) : null,
+    latestCompatible: compatible ? info(compatible) : null,
+    rustVersionQuery: query,
     recent: sorted.slice(0, RECENT_VERSIONS).map(info),
     totalVersions: lines.length,
     yankedVersions: lines.length - live.length,
     url: `https://crates.io/crates/${name}`,
+    oldestLiveRustVersion: oldestReleasedRust(live),
   };
 }
 
@@ -133,11 +164,29 @@ function notFound(name: string): CrateAnswer {
     latest: null,
     latestFeatures: [],
     latestPrerelease: null,
+    latestCompatible: null,
+    rustVersionQuery: null,
     recent: [],
     totalVersions: 0,
     yankedVersions: 0,
     url: null,
+    oldestLiveRustVersion: null,
   };
+}
+
+/**
+ * `rust-version` of the oldest non-yanked release. A pre-release can be older
+ * and declare a lower one, but this answer never returns a pre-release, so the
+ * "nothing matches" reply names the oldest release instead.
+ */
+function oldestReleasedRust(live: IndexLine[]): string | null {
+  for (let i = live.length - 1; i >= 0; i--) {
+    const line = live[i];
+    if (!isPrerelease(line.vers)) {
+      return line.rust_version ?? null;
+    }
+  }
+  return null;
 }
 
 function info(line: IndexLine): VersionInfo {
@@ -151,6 +200,32 @@ function info(line: IndexLine): VersionInfo {
 
 function isPrerelease(version: string): boolean {
   return version.split("+")[0].includes("-");
+}
+
+/**
+ * Numeric major.minor[.patch] compare. A missing patch is 0: the sparse index
+ * usually stores rust-version as "1.70", and cargo treats that as 1.70.0.
+ */
+export function compareRustVersion(a: string, b: string): number {
+  const left = rustVersionParts(a);
+  const right = rustVersionParts(b);
+  for (let i = 0; i < 3; i++) {
+    const diff = left[i] - right[i];
+    if (diff !== 0) {
+      return Math.sign(diff);
+    }
+  }
+  return 0;
+}
+
+/** Cargo's MSRV is a 1.x release written `1.75` or `1.75.0`. Other text is not a toolchain. */
+export function isValidRustVersion(version: string): boolean {
+  return /^1\.\d{1,3}(\.\d{1,3})?$/.test(version);
+}
+
+function rustVersionParts(version: string): [number, number, number] {
+  const [major, minor, patch] = version.split(".");
+  return [Number(major), Number(minor), patch === undefined ? 0 : Number(patch)];
 }
 
 /** SemVer 2.0.0 precedence; build metadata is ignored. */

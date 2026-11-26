@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  compareRustVersion,
   compareSemver,
   CrateLookupError,
   indexPath,
@@ -44,6 +45,45 @@ test("picks the newest live version and a newer pre-release", () => {
   assert.equal(answer.yankedVersions, 1);
   assert.equal(answer.recent[0].version, "2.0.0-beta.10");
   assert.ok(answer.recent.some((v) => v.version === "1.1.0" && v.yanked));
+  assert.equal(answer.latestCompatible, null);
+  assert.equal(answer.rustVersionQuery, null);
+});
+
+test("compares rust versions numerically, with a missing patch as 0", () => {
+  assert.equal(compareRustVersion("1.70", "1.70.0"), 0);
+  assert.ok(compareRustVersion("1.9", "1.10") < 0);
+});
+
+test("picks the newest release a toolchain can build", () => {
+  const at172 = summarize(INDEX, { rustVersion: "1.72" });
+  assert.equal(at172.latestCompatible?.version, "1.0.0");
+  assert.equal(at172.rustVersionQuery, "1.72");
+  assert.equal(summarize(INDEX, { rustVersion: "1.74.0" }).latestCompatible?.version, "1.0.1");
+  // 0.9.0 has no rust-version, which cargo treats as compatible. The newer betas are not releases.
+  assert.equal(summarize(INDEX, { rustVersion: "1.60" }).latestCompatible?.version, "0.9.0");
+  // 1.1.0 is yanked and sorts above 1.0.1; it must not win.
+  assert.equal(summarize(INDEX, { rustVersion: "1.90" }).latestCompatible?.version, "1.0.1");
+});
+
+test("skips yanked releases and pre-releases when nothing else qualifies", () => {
+  const answer = summarize(
+    [line("1.2.0", { rust_version: "1.80" }), line("1.1.0", { yanked: true }), line("2.0.0-rc.1")].join("\n"),
+    { rustVersion: "1.70" },
+  );
+  assert.equal(answer.latestCompatible, null);
+  assert.equal(answer.rustVersionQuery, "1.70");
+  assert.equal(answer.oldestLiveRustVersion, "1.80");
+});
+
+test("names the oldest release's rust requirement outside the recent list", () => {
+  const versions = [
+    line("0.1.0", { rust_version: "1.70" }),
+    ...Array.from({ length: 10 }, (_, i) => line(`0.2.${i}`, { rust_version: "1.90" })),
+  ].join("\n");
+  const answer = summarize(versions, { rustVersion: "1.65" });
+  assert.equal(answer.latestCompatible, null);
+  assert.equal(answer.oldestLiveRustVersion, "1.70");
+  assert.equal(answer.recent.some((v) => v.version === "0.1.0"), false);
 });
 
 test("tries the other spelling of - and _", async () => {
@@ -64,8 +104,24 @@ test("tries the other spelling of - and _", async () => {
 });
 
 test("reports a missing crate", async () => {
-  const answer = await lookupCrate("nope", async () => new Response("", { status: 404 }));
+  const answer = await lookupCrate("nope", async () => new Response("", { status: 404 }), {
+    rustVersion: "1.75",
+  });
   assert.equal(answer.found, false);
+  assert.equal(answer.latestCompatible, null);
+  assert.equal(answer.rustVersionQuery, null);
+});
+
+test("rejects a rust version that is not a toolchain without fetching", async () => {
+  let called = false;
+  await assert.rejects(
+    lookupCrate("serde", async () => {
+      called = true;
+      return new Response("");
+    }, { rustVersion: "nightly" }),
+    CrateLookupError,
+  );
+  assert.equal(called, false);
 });
 
 test("rejects invalid names without fetching", async () => {

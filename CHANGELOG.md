@@ -6,6 +6,14 @@ All notable changes to this project are listed here. Versions follow
 
 ## [Unreleased]
 
+### Added
+
+- **Toolchain-aware crate versions.** `get_crate_versions` accepts an optional
+  `rust_version`, such as `1.75`, and returns `latestCompatible`: the newest
+  release that builds on that toolchain. A release with no `rust-version` counts
+  as compatible, matching cargo's MSRV-aware resolver. Yanked releases and
+  pre-releases are skipped. When none qualify, `latestCompatible` is null.
+
 ## [1.6.0] - 2026-11-08
 
 The Beautiful Rust MCP server, and a Codex and ChatGPT plugin that uses it. Thanks to

@@ -9,12 +9,28 @@ const SERDE = [
   JSON.stringify({ name: "serde", vers: "1.0.0", yanked: false, features: { std: [] }, rust_version: "1.31" }),
 ].join("\n");
 
+// The alpha is older and declares a lower MSRV, and the yanked line is newer.
+// Neither is a released version the tool can return.
+const FLOOR = [
+  JSON.stringify({ name: "floor", vers: "0.0.1-alpha.1", yanked: false, features: {}, rust_version: "1.40" }),
+  JSON.stringify({ name: "floor", vers: "0.1.0", yanked: false, features: {}, rust_version: "1.70" }),
+  JSON.stringify({ name: "floor", vers: "0.2.0", yanked: false, features: {}, rust_version: "1.80" }),
+  JSON.stringify({ name: "floor", vers: "9.9.9", yanked: true, features: {}, rust_version: "1.10" }),
+].join("\n");
+
 async function connect() {
   const server = createServer({
     guidance,
     lints,
-    fetch: async (url) =>
-      url.endsWith("/serde") ? new Response(SERDE) : new Response("", { status: 404 }),
+    fetch: async (url) => {
+      if (url.endsWith("/serde")) {
+        return new Response(SERDE);
+      }
+      if (url.endsWith("/floor")) {
+        return new Response(FLOOR);
+      }
+      return new Response("", { status: 404 });
+    },
   });
   const client = new Client({ name: "test", version: "0.0.0" });
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
@@ -52,9 +68,48 @@ test("explain_lint describes the config setting", async () => {
 test("get_crate_versions answers and reports bad names as tool errors", async () => {
   const client = await connect();
   const ok = await client.callTool({ name: "get_crate_versions", arguments: { name: "serde" } });
-  assert.equal((ok.structuredContent as { latest: { version: string } }).latest.version, "1.0.0");
+  const structured = ok.structuredContent as {
+    latest: { version: string };
+    latestCompatible: null;
+    rustVersionQuery: null;
+  };
+  assert.equal(structured.latest.version, "1.0.0");
+  assert.equal(structured.latestCompatible, null);
+  assert.equal(structured.rustVersionQuery, null);
+  assert.equal("oldestLiveRustVersion" in (ok.structuredContent as object), false);
+  const text = (ok.content as { type: string; text: string }[])[0].text;
+  assert.doesNotMatch(text, /Newest for Rust/);
   const bad = await client.callTool({ name: "get_crate_versions", arguments: { name: "not a crate" } });
   assert.equal(bad.isError, true);
+});
+
+test("get_crate_versions returns the newest release the toolchain can build", async () => {
+  const client = await connect();
+  const ok = await client.callTool({
+    name: "get_crate_versions",
+    arguments: { name: "serde", rust_version: "1.31" },
+  });
+  assert.notEqual(ok.isError, true);
+  assert.equal((ok.structuredContent as { latestCompatible: { version: string } }).latestCompatible.version, "1.0.0");
+  const text = (ok.content as { type: string; text: string }[])[0].text;
+  assert.match(text, /Newest for Rust 1\.31: 1\.0\.0/);
+
+  const none = await client.callTool({
+    name: "get_crate_versions",
+    arguments: { name: "floor", rust_version: "1.60" },
+  });
+  assert.equal((none.structuredContent as { latestCompatible: null; rustVersionQuery: string }).latestCompatible, null);
+  assert.equal((none.structuredContent as { rustVersionQuery: string }).rustVersionQuery, "1.60");
+  const noneText = (none.content as { type: string; text: string }[])[0].text;
+  assert.match(noneText, /No released version supports Rust 1\.60; the oldest live version needs Rust 1\.70/);
+
+  const bad = await client.callTool({
+    name: "get_crate_versions",
+    arguments: { name: "serde", rust_version: "abc" },
+  });
+  assert.equal(bad.isError, true);
+  const badText = (bad.content as { type: string; text: string }[])[0].text;
+  assert.doesNotMatch(badText, /not a Rust version/);
 });
 
 test("rejects arguments that break the input schema", async () => {
