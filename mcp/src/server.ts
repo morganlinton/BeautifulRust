@@ -139,10 +139,16 @@ export function createServer(deps: Deps): McpServer {
       description:
         "Look up a Rust crate on crates.io: the newest version that isn't yanked, a newer " +
         "pre-release if there is one, each version's minimum supported Rust version and " +
-        "publish date, and the newest version's features. Use it before adding or " +
+        "publish date, and the newest version's features. Pass rust_version to get the " +
+        "newest version that builds on that toolchain. Use it before adding or " +
         "upgrading a dependency so Cargo.toml names a version that exists.",
       inputSchema: {
         name: z.string().min(1).max(64).describe("The crate name, for example serde"),
+        rust_version: z
+          .string()
+          .regex(/^1\.\d{1,3}(\.\d{1,3})?$/)
+          .optional()
+          .describe("The Rust toolchain the project must build with, for example 1.75"),
       },
       outputSchema: {
         name: z.string(),
@@ -150,6 +156,8 @@ export function createServer(deps: Deps): McpServer {
         latest: versionInfo.nullable(),
         latestFeatures: z.array(z.string()),
         latestPrerelease: versionInfo.nullable(),
+        latestCompatible: versionInfo.nullable(),
+        rustVersionQuery: z.string().nullable(),
         recent: z.array(versionInfo),
         totalVersions: z.number(),
         yankedVersions: z.number(),
@@ -157,19 +165,22 @@ export function createServer(deps: Deps): McpServer {
       },
       annotations: lookupHints(true),
     },
-    async ({ name }) => {
+    async ({ name, rust_version }) => {
       let answer: CrateAnswer;
       try {
-        answer = await lookupCrate(name.trim(), deps.fetch);
+        answer = await lookupCrate(name.trim(), deps.fetch, { rustVersion: rust_version });
       } catch (error) {
         if (error instanceof CrateLookupError) {
           return { content: [{ type: "text", text: error.message }], isError: true };
         }
         throw error;
       }
+      // oldestLiveRustVersion is only for the text reply. The schema adds
+      // latestCompatible and rustVersionQuery and nothing else.
+      const { oldestLiveRustVersion, ...published } = answer;
       return {
-        content: [{ type: "text", text: describeCrate(answer) }],
-        structuredContent: { ...answer },
+        content: [{ type: "text", text: describeCrate(published, oldestLiveRustVersion) }],
+        structuredContent: published,
       };
     },
   );
@@ -202,7 +213,10 @@ function describeLint(input: string, answer: LintAnswer): string {
   return lines.join("\n");
 }
 
-function describeCrate(answer: CrateAnswer): string {
+function describeCrate(
+  answer: Omit<CrateAnswer, "oldestLiveRustVersion">,
+  oldestLiveRustVersion: string | null,
+): string {
   if (!answer.found) {
     return `No crate named "${answer.name}" on crates.io.`;
   }
@@ -216,6 +230,18 @@ function describeCrate(answer: CrateAnswer): string {
   }
   if (answer.latestPrerelease) {
     lines.push(`Newer pre-release: ${answer.latestPrerelease.version}${msrv(answer.latestPrerelease)}`);
+  }
+  const query = answer.rustVersionQuery;
+  if (query) {
+    if (answer.latestCompatible) {
+      lines.push(`Newest for Rust ${query}: ${answer.latestCompatible.version}`);
+    } else if (oldestLiveRustVersion) {
+      lines.push(
+        `No released version supports Rust ${query}; the oldest live version needs Rust ${oldestLiveRustVersion}`,
+      );
+    } else {
+      lines.push(`No released version supports Rust ${query}`);
+    }
   }
   if (answer.latestFeatures.length > 0) {
     lines.push(`Features: ${answer.latestFeatures.join(", ")}`);
