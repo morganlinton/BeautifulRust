@@ -1,6 +1,14 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { CrateLookupError, lookupCrate, type CrateAnswer, type Fetcher } from "./crates.ts";
+import {
+  CrateLookupError,
+  lookupCrate,
+  lookupDependencies,
+  type CrateAnswer,
+  type DependencyAnswer,
+  type DependencyInfo,
+  type Fetcher,
+} from "./crates.ts";
 import { SKILLS, searchGuidance, type GuidanceData } from "./guidance.ts";
 import { explainLint, type LintAnswer, type LintData } from "./lints.ts";
 
@@ -45,7 +53,7 @@ export function createServer(deps: Deps): McpServer {
         "Beautiful Rust's guidance for idiomatic Rust, drawn from the Google Rust Style " +
         "Guide, the Rust API Guidelines, Effective Rust, Rust Design Patterns, and " +
         "Microsoft's Pragmatic Rust Guidelines, plus clippy lint explanations and " +
-        "current crate versions.",
+        "current crate versions and dependencies.",
     },
   );
 
@@ -174,6 +182,66 @@ export function createServer(deps: Deps): McpServer {
     },
   );
 
+  server.registerTool(
+    "get_crate_dependencies",
+    {
+      title: "Get crate dependencies",
+      description:
+        "List a Rust crate's direct dependencies on crates.io: version requirements, kinds " +
+        "(normal, build, dev), optional dependencies and the features that enable them, " +
+        "targets, and the real package name when a dependency is renamed. Defaults to the " +
+        "newest version that isn't yanked. Use it before adding a crate to see what it " +
+        "pulls in and which features to turn on.",
+      inputSchema: {
+        name: z.string().min(1).max(64).describe("The crate name, for example serde"),
+        version: z
+          .string()
+          .min(1)
+          .max(128)
+          .optional()
+          .describe("Exact version to read. Defaults to the newest version that isn't yanked"),
+      },
+      outputSchema: {
+        name: z.string(),
+        found: z.boolean(),
+        version: z.string().nullable(),
+        yanked: z.boolean(),
+        dependencies: z.array(
+          z.object({
+            name: z.string(),
+            package: z.string().nullable(),
+            req: z.string(),
+            kind: z.enum(["normal", "build", "dev"]),
+            optional: z.boolean(),
+            defaultFeatures: z.boolean(),
+            features: z.array(z.string()),
+            target: z.string().nullable(),
+            enabledBy: z.array(z.string()),
+          }),
+        ),
+        features: z.record(z.string(), z.array(z.string())),
+        defaultFeatures: z.array(z.string()),
+        url: z.string().nullable(),
+      },
+      annotations: lookupHints(true),
+    },
+    async ({ name, version }) => {
+      let answer: DependencyAnswer;
+      try {
+        answer = await lookupDependencies(name.trim(), version?.trim(), deps.fetch);
+      } catch (error) {
+        if (error instanceof CrateLookupError) {
+          return { content: [{ type: "text", text: error.message }], isError: true };
+        }
+        throw error;
+      }
+      return {
+        content: [{ type: "text", text: describeDependencies(answer) }],
+        structuredContent: { ...answer },
+      };
+    },
+  );
+
   return server;
 }
 
@@ -226,4 +294,75 @@ function describeCrate(answer: CrateAnswer): string {
       .join(", ")}`,
   );
   return lines.join("\n");
+}
+
+function describeDependencies(answer: DependencyAnswer): string {
+  if (!answer.found) {
+    return `No crate named "${answer.name}" on crates.io.`;
+  }
+  if (!answer.version) {
+    return `${answer.name} has no released version that isn't yanked.`;
+  }
+  const counts = (["normal", "build", "dev"] as const).flatMap((kind) => {
+    const count = answer.dependencies.filter((dep) => dep.kind === kind).length;
+    return count > 0 ? [`${kind}: ${count}`] : [];
+  });
+  let summary = counts.join(", ");
+  if (answer.yanked) {
+    summary = summary.length > 0 ? `yanked, ${summary}` : "yanked";
+  } else if (summary.length === 0) {
+    summary = "no dependencies";
+  }
+  const lines = [`${answer.name} ${answer.version} (${summary})`];
+  if (answer.url) {
+    lines.push(answer.url);
+  }
+  for (const kind of ["normal", "build", "dev"] as const) {
+    const group = answer.dependencies.filter((dep) => dep.kind === kind);
+    if (group.length === 0) {
+      continue;
+    }
+    lines.push("", `${kind}:`);
+    for (const dep of group) {
+      lines.push(`- ${formatDep(dep)}`);
+    }
+  }
+  const featureNames = Object.keys(answer.features);
+  if (featureNames.length > 0) {
+    lines.push("", `Features: ${featureNames.join(", ")}`);
+  }
+  if (answer.defaultFeatures.length > 0) {
+    lines.push(`Default features: ${answer.defaultFeatures.join(", ")}`);
+  }
+  return lines.join("\n");
+}
+
+function formatDep(dep: DependencyInfo): string {
+  const notes: string[] = [];
+  if (dep.package) {
+    notes.push(`package ${dep.package}`);
+  }
+  if (dep.optional) {
+    notes.push(optionalNote(dep.enabledBy));
+  }
+  if (!dep.defaultFeatures) {
+    notes.push("default-features = false");
+  }
+  if (dep.features.length > 0) {
+    notes.push(`features: ${dep.features.join(", ")}`);
+  }
+  if (dep.target) {
+    notes.push(`target \`${dep.target}\``);
+  }
+  const suffix = notes.length > 0 ? ` (${notes.join(", ")})` : "";
+  return `${dep.name} ${dep.req}${suffix}`;
+}
+
+function optionalNote(enabledBy: string[]): string {
+  if (enabledBy.length === 0) {
+    return "optional";
+  }
+  const quoted = enabledBy.map((feature) => `"${feature}"`).join(", ");
+  const label = enabledBy.length === 1 ? "feature" : "features";
+  return `optional, via ${label} ${quoted}`;
 }

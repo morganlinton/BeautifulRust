@@ -22,13 +22,13 @@ server, described [below](#the-mcp-server).
 ## The MCP server
 
 The ChatGPT / Codex plugin also connects to a remote MCP server at
-`https://mcp.beautifulrust.dev/mcp`. It has three read-only tools that look up Beautiful
-Rust's rules, explain Rust lints, and read crate versions from crates.io. It needs no
-account and no sign-in.
+`https://mcp.beautifulrust.dev/mcp`. It has four read-only tools that look up Beautiful
+Rust's rules, explain Rust lints, and read crate versions and dependencies from
+crates.io. It needs no account and no sign-in.
 
 - **What it receives:** only the inputs of each tool call: a search phrase and an
-  optional skill name, a lint name, or a crate name. It never asks for your code, files,
-  or chat history.
+  optional skill name, a lint name, or a crate name and an optional version. It never
+  asks for your code, files, or chat history.
 - **What it does with them:** answers that one request. The server stores nothing, sets
   no cookies, and does not build a profile of you. Nothing is sold or shared for
   advertising.

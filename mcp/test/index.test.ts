@@ -32,7 +32,12 @@ test("answers MCP initialize and tools/list with CORS headers", async () => {
 
   const list = await handleRequest(mcpRequest({ jsonrpc: "2.0", id: 2, method: "tools/list" }), {});
   const names = (await json(list)).result.tools.map((t: { name: string }) => t.name).sort();
-  assert.deepEqual(names, ["explain_lint", "get_crate_versions", "search_guidance"]);
+  assert.deepEqual(names, [
+    "explain_lint",
+    "get_crate_dependencies",
+    "get_crate_versions",
+    "search_guidance",
+  ]);
 });
 
 test("serves clients that don't list both Accept types", async () => {
@@ -50,7 +55,7 @@ test("serves clients that don't list both Accept types", async () => {
       {},
     );
     assert.equal(response.status, 200, `Accept: ${accept}`);
-    assert.equal((await json(response)).result.tools.length, 3, `Accept: ${accept}`);
+    assert.equal((await json(response)).result.tools.length, 4, `Accept: ${accept}`);
   }
 });
 
