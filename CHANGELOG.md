@@ -6,6 +6,14 @@ All notable changes to this project are listed here. Versions follow
 
 ## [Unreleased]
 
+### Added
+
+- **Crate dependencies on the MCP server.** `get_crate_dependencies` lists the direct
+  dependencies of one crate version, defaulting to the newest that isn't yanked. Each
+  dependency includes its requirement, kind, optional flag, features, target, and the
+  real package name when it is renamed, and optional dependencies name the feature that
+  enables them. It reads the same cached crates.io index file as `get_crate_versions`.
+
 ## [1.6.0] - 2026-11-08
 
 The Beautiful Rust MCP server, and a Codex and ChatGPT plugin that uses it. Thanks to

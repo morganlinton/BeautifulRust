@@ -1,4 +1,5 @@
-// Crate versions from the crates.io sparse index, the same files cargo reads:
+// Crate versions and direct dependencies from the crates.io sparse index, the
+// same files cargo reads:
 // https://doc.rust-lang.org/cargo/reference/registry-index.html
 
 export const INDEX_URL = "https://index.crates.io";
@@ -8,14 +9,28 @@ const NAME_RE = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
 const RECENT_VERSIONS = 10;
 const MAX_INDEX_BYTES = 8 * 1024 * 1024;
 const TIMEOUT_MS = 8000;
+const NEAREST_VERSIONS = 5;
+
+interface IndexDep {
+  name: string;
+  req: string;
+  features?: unknown;
+  optional?: boolean;
+  default_features?: boolean;
+  target?: string | null;
+  kind?: string | null;
+  package?: string | null;
+}
 
 interface IndexLine {
+  name: string;
   vers: string;
   yanked: boolean;
   rust_version?: string | null;
   pubtime?: string | null;
   features?: Record<string, unknown>;
   features2?: Record<string, unknown>;
+  deps?: IndexDep[];
 }
 
 export interface VersionInfo {
@@ -34,6 +49,31 @@ export interface CrateAnswer {
   recent: VersionInfo[];
   totalVersions: number;
   yankedVersions: number;
+  url: string | null;
+}
+
+export interface DependencyInfo {
+  name: string;
+  /** Real crate name when `name` is a rename; null when the dependency is not renamed. */
+  package: string | null;
+  req: string;
+  kind: "normal" | "build" | "dev";
+  optional: boolean;
+  defaultFeatures: boolean;
+  features: string[];
+  target: string | null;
+  /** Features of this version that enable this optional dependency. */
+  enabledBy: string[];
+}
+
+export interface DependencyAnswer {
+  name: string;
+  found: boolean;
+  version: string | null;
+  yanked: boolean;
+  dependencies: DependencyInfo[];
+  features: Record<string, string[]>;
+  defaultFeatures: string[];
   url: string | null;
 }
 
@@ -58,6 +98,70 @@ export function indexPath(name: string): string {
 }
 
 export async function lookupCrate(name: string, fetcher: Fetcher): Promise<CrateAnswer> {
+  const lines = await readIndex(name, fetcher);
+  if (lines === null) {
+    return notFound(name);
+  }
+  return summarizeLines(lines);
+}
+
+export async function lookupDependencies(
+  name: string,
+  version: string | undefined,
+  fetcher: Fetcher,
+): Promise<DependencyAnswer> {
+  const lines = await readIndex(name, fetcher);
+  if (lines === null) {
+    return notFoundDependencies(name);
+  }
+  return dependenciesOf(lines, version);
+}
+
+/**
+ * Direct dependencies of one index version. `version` is an exact version
+ * string; omit it for the newest non-yanked stable release, or the newest
+ * pre-release when the crate has no stable release.
+ */
+export function dependenciesOf(lines: IndexLine[], version?: string): DependencyAnswer {
+  if (lines.length === 0) {
+    throw new CrateLookupError("crates.io index file is empty");
+  }
+  const name = lines[lines.length - 1].name;
+  const requested = version?.trim() ?? "";
+  const chosen =
+    requested.length === 0 ? defaultVersion(lines) : (lines.find((line) => line.vers === requested) ?? null);
+  if (requested.length > 0 && chosen === null) {
+    const nearest = nearestVersions(lines, requested)
+      .map((line) => (line.yanked ? `${line.vers} (yanked)` : line.vers))
+      .join(", ");
+    throw new CrateLookupError(`No version "${requested}" of ${name}. Nearest versions: ${nearest}.`);
+  }
+  if (chosen === null) {
+    return {
+      name,
+      found: true,
+      version: null,
+      yanked: false,
+      dependencies: [],
+      features: {},
+      defaultFeatures: [],
+      url: `https://crates.io/crates/${name}`,
+    };
+  }
+  const features = featureMap(chosen);
+  return {
+    name,
+    found: true,
+    version: chosen.vers,
+    yanked: chosen.yanked,
+    dependencies: (chosen.deps ?? []).map((dep) => toDependency(dep, features)),
+    features,
+    defaultFeatures: [...(features.default ?? [])],
+    url: `https://crates.io/crates/${name}`,
+  };
+}
+
+async function readIndex(name: string, fetcher: Fetcher): Promise<IndexLine[] | null> {
   if (!isValidCrateName(name)) {
     throw new CrateLookupError(`"${name}" is not a valid crate name`);
   }
@@ -67,10 +171,10 @@ export async function lookupCrate(name: string, fetcher: Fetcher): Promise<Crate
   for (const spelling of spellings) {
     const text = await fetchIndex(spelling, fetcher);
     if (text !== null) {
-      return summarize(text);
+      return parseIndex(text);
     }
   }
-  return notFound(name);
+  return null;
 }
 
 async function fetchIndex(name: string, fetcher: Fetcher): Promise<string | null> {
@@ -96,34 +200,135 @@ async function fetchIndex(name: string, fetcher: Fetcher): Promise<string | null
   return text;
 }
 
-export function summarize(indexText: string): CrateAnswer {
-  const lines: (IndexLine & { name: string })[] = indexText
+function parseIndex(indexText: string): IndexLine[] {
+  const lines: IndexLine[] = indexText
     .split("\n")
     .filter((line) => line.trim().length > 0)
-    .map((line) => JSON.parse(line));
+    .map((line) => JSON.parse(line) as IndexLine);
   if (lines.length === 0) {
     throw new CrateLookupError("crates.io index file is empty");
   }
+  return lines;
+}
+
+export function summarize(indexText: string): CrateAnswer {
+  return summarizeLines(parseIndex(indexText));
+}
+
+function summarizeLines(lines: IndexLine[]): CrateAnswer {
   const name = lines[lines.length - 1].name;
-  const sorted = [...lines].sort((a, b) => compareSemver(b.vers, a.vers));
-  const live = sorted.filter((line) => !line.yanked);
-  const stable = live.find((line) => !isPrerelease(line.vers)) ?? null;
-  const pre = live.find((line) => isPrerelease(line.vers)) ?? null;
-  const newerPre = pre && (!stable || compareSemver(pre.vers, stable.vers) > 0) ? pre : null;
+  const { stable, newerPre, sorted, liveCount } = classify(lines);
   const latestLine = stable ?? newerPre;
   return {
     name,
     found: true,
     latest: stable ? info(stable) : null,
-    latestFeatures: latestLine
-      ? Object.keys({ ...latestLine.features, ...latestLine.features2 }).sort()
-      : [],
+    latestFeatures: latestLine ? Object.keys(featureMap(latestLine)) : [],
     latestPrerelease: newerPre ? info(newerPre) : null,
     recent: sorted.slice(0, RECENT_VERSIONS).map(info),
     totalVersions: lines.length,
-    yankedVersions: lines.length - live.length,
+    yankedVersions: lines.length - liveCount,
     url: `https://crates.io/crates/${name}`,
   };
+}
+
+/** Newest non-yanked stable release, else the newest pre-release. */
+function defaultVersion(lines: IndexLine[]): IndexLine | null {
+  const { stable, newerPre } = classify(lines);
+  return stable ?? newerPre;
+}
+
+function classify(lines: IndexLine[]): {
+  stable: IndexLine | null;
+  newerPre: IndexLine | null;
+  sorted: IndexLine[];
+  liveCount: number;
+} {
+  const sorted = [...lines].sort((a, b) => compareSemver(b.vers, a.vers));
+  const live = sorted.filter((line) => !line.yanked);
+  const stable = live.find((line) => !isPrerelease(line.vers)) ?? null;
+  const pre = live.find((line) => isPrerelease(line.vers)) ?? null;
+  const newerPre = pre && (!stable || compareSemver(pre.vers, stable.vers) > 0) ? pre : null;
+  return { stable, newerPre, sorted, liveCount: live.length };
+}
+
+function featureMap(line: IndexLine): Record<string, string[]> {
+  // `features2` is the current feature syntax and replaces `features` for the same name.
+  const merged = new Map<string, string[]>();
+  for (const source of [line.features, line.features2]) {
+    if (!source) {
+      continue;
+    }
+    for (const [key, value] of Object.entries(source)) {
+      merged.set(key, stringList(value));
+    }
+  }
+  const keys = [...merged.keys()].sort();
+  return Object.fromEntries(keys.map((key) => [key, merged.get(key) ?? []]));
+}
+
+function toDependency(dep: IndexDep, features: Record<string, string[]>): DependencyInfo {
+  const optional = dep.optional === true;
+  const packageName =
+    typeof dep.package === "string" && dep.package.length > 0 && dep.package !== dep.name ? dep.package : null;
+  return {
+    name: dep.name,
+    package: packageName,
+    req: dep.req,
+    kind: dep.kind === "build" || dep.kind === "dev" ? dep.kind : "normal",
+    optional,
+    defaultFeatures: dep.default_features !== false,
+    features: stringList(dep.features),
+    target: typeof dep.target === "string" && dep.target.length > 0 ? dep.target : null,
+    enabledBy: optional ? featuresEnabling(dep.name, features) : [],
+  };
+}
+
+/** Features whose values name this dependency, as `dep:name` or a bare `name`. */
+function featuresEnabling(depName: string, features: Record<string, string[]>): string[] {
+  const enabledBy: string[] = [];
+  for (const [feature, values] of Object.entries(features)) {
+    if (values.includes(`dep:${depName}`) || values.includes(depName)) {
+      enabledBy.push(feature);
+    }
+  }
+  return enabledBy;
+}
+
+function stringList(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter((item): item is string => typeof item === "string");
+}
+
+function nearestVersions(lines: IndexLine[], version: string): IndexLine[] {
+  return [...lines]
+    .sort((a, b) => {
+      const diff = versionDistance(version, a.vers) - versionDistance(version, b.vers);
+      return diff !== 0 ? diff : compareSemver(b.vers, a.vers);
+    })
+    .slice(0, NEAREST_VERSIONS);
+}
+
+/** Lower is closer. Unparseable versions sort after every real version. */
+function versionDistance(requested: string, candidate: string): number {
+  const [coreA, preA] = splitVersion(requested);
+  const [coreB, preB] = splitVersion(candidate);
+  const weights = [1_000_000, 1_000, 1];
+  let score = 0;
+  for (let i = 0; i < 3; i++) {
+    const left = coreA[i] ?? 0;
+    const right = coreB[i] ?? 0;
+    if (Number.isNaN(left) || Number.isNaN(right)) {
+      return Number.MAX_SAFE_INTEGER;
+    }
+    score += Math.abs(left - right) * weights[i];
+  }
+  if (preA.join(".") !== preB.join(".")) {
+    score += 1;
+  }
+  return score;
 }
 
 function notFound(name: string): CrateAnswer {
@@ -136,6 +341,19 @@ function notFound(name: string): CrateAnswer {
     recent: [],
     totalVersions: 0,
     yankedVersions: 0,
+    url: null,
+  };
+}
+
+function notFoundDependencies(name: string): DependencyAnswer {
+  return {
+    name,
+    found: false,
+    version: null,
+    yanked: false,
+    dependencies: [],
+    features: {},
+    defaultFeatures: [],
     url: null,
   };
 }
